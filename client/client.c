@@ -19,8 +19,9 @@ int main(int argc,char *argv[])
     localBind(&netif);
     
 
-    char test[50];
-    dataRecv(netif.socketfd,50,test);
+    char publicKey[41];
+    dataRecv(netif.socketfd,41,publicKey);
+    printf("%s",publicKey);
     return 0;
 }
 
