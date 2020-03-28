@@ -1,5 +1,11 @@
 #include "client.h"
 
+#define GLOBALBUFSIZE 512*1024
+
+int rdP = 0;
+int wtP = 0;
+char recvBufGlobal[GLOBALBUFSIZE];
+
 int main(int argc,char *argv[])
 {
     GameInfo gmif;
@@ -19,9 +25,7 @@ int main(int argc,char *argv[])
     localBind(&netif);
     
 
-    char publicKey[41];
-    dataRecv(netif.socketfd,41,publicKey);
-    printf("%s",publicKey);
+    
     return 0;
 }
 
@@ -202,6 +206,9 @@ int login(GameInfo gmif,NetInfo* netif)
     strcat(keyString,"*");
     getMD5(&keyString[8],gmif.stuPasswd);
 
+    dataRecv(netif.socketfd,GLOBALBUFSIZE,recvBufGlobal);
+    printf("%s",publicKey);
+
     
 }
 
@@ -280,4 +287,5 @@ void dataRecv(int socketfd,int recvBufSize,char *recvBuf)
 			break;
 	}
 }
+
 

@@ -21,3 +21,4 @@
 #endif
 
 int getMD5(unsigned char *dest,unsigned char *src);
+int packGet(int socketfd);

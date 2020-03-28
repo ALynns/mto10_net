@@ -20,3 +20,8 @@ int getMD5(unsigned char *dest,unsigned char *src)
 	return 0;
 }
 
+int packGet(int socketfd)
+{
+	
+}
+
