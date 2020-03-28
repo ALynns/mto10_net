@@ -6,11 +6,11 @@ int rdP = 0;
 int wtP = 0;
 char recvBufGlobal[GLOBALBUFSIZE];
 
+GameInfo gmif;
+NetInfo netif;
+
 int main(int argc,char *argv[])
 {
-    GameInfo gmif;
-    NetInfo netif;
-
     netif.serverAddr=(char *)malloc(16);
     gmif.stuNo=(char *)malloc(IDLENGTH);
     gmif.stuPasswd=(char *)malloc(PWDLENGTH);
@@ -25,7 +25,9 @@ int main(int argc,char *argv[])
     localBind(&netif);
     
 
-    
+    free(netif.serverAddr);
+    free(gmif.stuNo);
+    free(gmif.stuPasswd);   
     return 0;
 }
 
