@@ -23,11 +23,14 @@ int main(int argc,char *argv[])
         return 0;
     }
     localBind(&netif);
+
     
     signal(SIGALRM, dataRecv);
     setTimer(0,1000,0,1000);
-
+    
     login(gmif,&netif);
+
+    printf("%d,%d\n",wtP,rdP);
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -44,7 +47,7 @@ int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *
     //默认IP地址和端口号
     strcpy(serverAddr,"127.0.0.1");
     //strcpy(serverAddr,"10.60.102.252");
-    *port=21345;
+    (*port)=21345;
 
     //默认账号
     strcpy(stuPasswd,"0HhJ)j8JGx+3uq.#");
@@ -187,7 +190,7 @@ int localBind(NetInfo* netif)
                     getsockopt(netif->socketfd, SOL_SOCKET, SO_ERROR, &error, (socklen_t *)&slen);
                     if (error == 0)
                     {
-                        printf("Connection successful\n");
+                        //printf("Connection successful\n");
                         ret = 1;
                     }
                     
@@ -205,7 +208,7 @@ int localBind(NetInfo* netif)
 
 int login(GameInfo gmif,NetInfo* netif)
 {
-    char buf[300];
+    char buf[300]={0};
     unsigned char keyString[41];
     keyString[0]=0;
 
@@ -213,17 +216,15 @@ int login(GameInfo gmif,NetInfo* netif)
     strcat(keyString,"*");
     getMD5(&keyString[8],gmif.stuPasswd);
 
-    printf("%s",recvBufGlobal);
-
     while(readLine(buf))
-        printf("%s",buf);
-
+        ;
+    printf("%s",buf);
     while(readLine(buf))
-        printf("%s",buf);
-
+        ;
+    printf("%s",buf);
     while(readLine(buf))
-        printf("%s",buf);
-    
+    ;
+    printf("%s",buf);
 }
 
 void dataSend(int socketfd,int sendBufSize,char *sendBuf)
@@ -314,6 +315,7 @@ int readLine(char *buf)
         if (recvBufGlobal[rdP + i] == 0x0a)
         {
             strncpy(buf, &recvBufGlobal[rdP], i - 1);
+            buf[i-1]=0;
             rdP = rdP + i + 1;
             return 0;
         }
