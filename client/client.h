@@ -49,4 +49,5 @@ int getArg(int argc,char *argv[],int *gameMode,char *ipAddr,int *port,char *stuN
 int localBind(NetInfo* netif);
 int login(GameInfo gmif,NetInfo* netif);
 void dataSend(int socketfd,int sendBufSize,char *sendBuf);
-void dataRecv(int socketfd,int recvBufSize,char *recvBuf);
+void dataRecv(int signo);
+int readLine(char *buf);

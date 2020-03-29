@@ -24,6 +24,10 @@ int main(int argc,char *argv[])
     }
     localBind(&netif);
     
+    signal(SIGALRM, dataRecv);
+    setTimer(0,1000,0,1000);
+
+    login(gmif,&netif);
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -208,8 +212,7 @@ int login(GameInfo gmif,NetInfo* netif)
     strcat(keyString,"*");
     getMD5(&keyString[8],gmif.stuPasswd);
 
-    dataRecv(netif.socketfd,GLOBALBUFSIZE,recvBufGlobal);
-    printf("%s",publicKey);
+    printf("%s",recvBufGlobal);
 
     
 }
@@ -250,7 +253,7 @@ void dataSend(int socketfd,int sendBufSize,char *sendBuf)
 	}
 }
 
-void dataRecv(int socketfd,int recvBufSize,char *recvBuf)
+void dataRecv(int signo)
 {
     static int sendSize;
     int ret;
@@ -262,8 +265,8 @@ void dataRecv(int socketfd,int recvBufSize,char *recvBuf)
     while (1)
     {
         FD_ZERO(&fdsr);
-        FD_SET(socketfd, &fdsr);
-        ret = select(socketfd + 1, &fdsr, NULL, NULL, 0);
+        FD_SET(netif.socketfd, &fdsr);
+        ret = select(netif.socketfd + 1, &fdsr, NULL, NULL, 0);
         if (ret < 0 && errno != EINTR)
         {
             printf("select error,%d\n", ret);
@@ -279,15 +282,34 @@ void dataRecv(int socketfd,int recvBufSize,char *recvBuf)
                 break;
         }
     }
-    //FD_ISSET(socketfd, &fdsr)判断套接字是否就绪，本题仅监控一个描述符可以略过
+    //FD_ISSET(netif.socketfd, &fdsr)判断套接字是否就绪，本题仅监控一个描述符可以略过
 	while (1)
 	{
-		ret = recv(socketfd, recvBuf, recvBufSize, 0);
-		if (ret <= 0)
+		ret = recv(netif.socketfd, &(recvBufGlobal[wtP]), GLOBALBUFSIZE, 0);
+		if (ret < 0)
 			continue;
 		else
 			break;
 	}
+    if (ret >= 0)
+        wtP = wtP + ret;
+}
+
+int readLine(char *buf)
+{
+    int i;
+    for (i = 0;; ++i)
+    {
+        if (rdP + i >= wtP)
+            return -1;
+        if (recvBufGlobal[rdP + i] == 0x0a)
+        {
+            strncpy(buf, &recvBufGlobal[rdP], i - 1);
+            rdP = rdP + i + 1;
+            return 0;
+        }
+    }
+    return 0;
 }
 
 
