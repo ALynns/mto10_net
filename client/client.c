@@ -205,6 +205,7 @@ int localBind(NetInfo* netif)
 
 int login(GameInfo gmif,NetInfo* netif)
 {
+    char buf[300];
     unsigned char keyString[41];
     keyString[0]=0;
 
@@ -214,6 +215,14 @@ int login(GameInfo gmif,NetInfo* netif)
 
     printf("%s",recvBufGlobal);
 
+    while(readLine(buf))
+        printf("%s",buf);
+
+    while(readLine(buf))
+        printf("%s",buf);
+
+    while(readLine(buf))
+        printf("%s",buf);
     
 }
 
