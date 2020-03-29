@@ -21,4 +21,4 @@
 #endif
 
 int getMD5(unsigned char *dest,unsigned char *src);
-int packGet(int socketfd);
+void setTimer(int s_val,int us_val,int s_interval,int us_interval);

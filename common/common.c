@@ -20,8 +20,14 @@ int getMD5(unsigned char *dest,unsigned char *src)
 	return 0;
 }
 
-int packGet(int socketfd)
+void setTimer(int s_val,int us_val,int s_interval,int us_interval)
 {
-	
+    struct itimerval new_value, old_value;
+    new_value.it_value.tv_sec = s_val;
+    new_value.it_value.tv_usec = us_val;
+    new_value.it_interval.tv_sec = s_interval;
+    new_value.it_interval.tv_usec = us_interval;
+    setitimer(ITIMER_REAL, &new_value, &old_value);
 }
+
 
