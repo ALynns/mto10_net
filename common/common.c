@@ -35,7 +35,7 @@ int packCreate(char *buf, char *tp, char *tp_value)
     strcat(buf,tp);
     strcat(buf," = ");
     strcat(buf,tp_value);
-    strcat(buf,"\n\r");
+    strcat(buf,"\r\n");
     return 0;
 }
 
@@ -46,17 +46,17 @@ int packLength(char *buf)
 
     strcat(buf, "Length = ");
 
-    len = strlen(buf);//当前字符串长度
+    len = strlen(buf)+2;//当前字符串长度
 
     sprintf(tmp, "%d",len);//长度位数
-    len = len + strlen(tmp) + 2; //总字符串长度
+    len = len + strlen(tmp); //总字符串长度
     sprintf(tmp, "%d",len);
     if (len != strlen(buf) + strlen(tmp) + 2)
-        len++;
+        len= strlen(buf) + strlen(tmp) + 2;
 
     sprintf(tmp, "%d", len);
     strcat(buf,tmp);
-    strcat(buf,"\n\r");
+    strcat(buf,"\r\n");
     return 0;
 }
 

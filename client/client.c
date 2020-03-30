@@ -16,8 +16,8 @@ int main(int argc,char *argv[])
     gmif.stuNo=(char *)malloc(IDLENGTH);
     gmif.stuPasswd=(char *)malloc(PWDLENGTH);
     
-    getArg(argc,argv,&gmif.gameMode,netif.serverAddr,&netif.port,gmif.stuNo,gmif.stuPasswd,&gmif.mapid,&gmif.row,&gmif.col,&netif.timeOut,&gmif.stepMode);
-    //printf("%d\n%s\n%d\n%s\n%s\n%d\n%d\n%d\n%d\n%d\n",gmif.gameMode,netif.serverAddr,netif.port,gmif.stuNo,gmif.stuPasswd,gmif.mapid,gmif.row,gmif.col,netif.timeOut,gmif.stepMode);
+    getArg(argc,argv,&gmif.gameMode,netif.serverAddr,&netif.port,gmif.stuNo,gmif.stuPasswd,&gmif.mapid,&gmif.row,&gmif.col,&netif.delay,&gmif.stepMode);
+    //printf("%d\n%s\n%d\n%s\n%s\n%d\n%d\n%d\n%d\n%d\n",gmif.gameMode,netif.serverAddr,netif.port,gmif.stuNo,gmif.stuPasswd,gmif.mapid,gmif.row,gmif.col,netif.delay,gmif.stepMode);
     
     if(gmif.gameMode==HELPMODE)
     {
@@ -30,7 +30,7 @@ int main(int argc,char *argv[])
     setTimer(0,1000,0,1000);
     
     login(gmif,netif);
-    gamePro(gmif,netif);
+    gamePro(&gmif,&netif);
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -38,7 +38,7 @@ int main(int argc,char *argv[])
     return 0;
 }
 
-int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *stuNo,char *stuPasswd,int *mapid,int *row,int *col,int *timeOut,int *stepMode)
+int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *stuNo,char *stuPasswd,int *mapid,int *row,int *col,int *delay,int *stepMode)
 {
     const char *argvList[ARGVNUM]={"--base","--competition","--ipaddr","--port","--stuno","--passwd","--mapid","--row","--col","--timeout","--stepping"};
 
@@ -56,7 +56,7 @@ int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *
     (*mapid)=-1;
     (*row)=-1;
     (*col)=-1;
-    (*timeOut)=5;
+    (*delay)=5;
     (*stepMode)=STEPPINGMODE_OFF;
 
     if(argc<1)
@@ -122,7 +122,7 @@ int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *
                     }
                     case 9:
                     {
-                        (*timeOut)=atoi(argv[i+1]);
+                        (*delay)=atoi(argv[i+1]);
                         break;
                     }
                     case 10:
@@ -229,7 +229,6 @@ int login(GameInfo gmif,NetInfo netif)
     strcat(keyString,gmif.stuNo);
     strcat(keyString,"*");
     getMD5(&keyString[8],gmif.stuPasswd);
-
     
 
     while(readLine(buf))
@@ -274,13 +273,13 @@ int login(GameInfo gmif,NetInfo netif)
     packCreate(buf, "GameID", map);
 
     char delay[4];
-    sprintf(delay, "%d", netif.timeOut);
+    sprintf(delay, "%d", netif.delay*1000);
     packCreate(buf, "Delay", delay);
 
     packLength(buf);
 
     dataSend(netif.socketfd,strlen(buf),buf);
-    printf("%s\n",buf);
+    printf("%s",buf);
 
     while(readLine(buf))
     ;
@@ -318,8 +317,8 @@ void dataSend(int socketfd,int sendBufSize,char *sendBuf)
 	{
 		ret = send(socketfd, &sendBuf[ret],sendBufSize, 0);
         if(ret>0)
-            sendBufSize = sendBufSize - ret;
-        if(sendBufSize==0)
+            sendBufSize=sendBufSize-ret;
+		if(sendBufSize==0)
             break;
 	}
 }
@@ -384,24 +383,28 @@ int readLine(char *buf)
     return 0;
 }
 
-int gamePro(GameInfo gmif, NetInfo netif)
+int gamePro(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
     static char matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {-1};
-    dataRecv(0);
-        while(readLine(lineBuf))//Type
-            printf("%s", lineBuf);
+    if(rdP<wtP)
+        readLine(lineBuf);//Type
+    if(rdP<wtP)
         readLine(lineBuf);//content
-        readLine(lineBuf);//row
-        readLine(lineBuf);//col
-        readLine(lineBuf);//gameid
-        readLine(lineBuf);//delay
+    gameStart(gmif,netif);
+        
+    if(rdP<wtP)
+    {
         readLine(lineBuf);//map
+        char newMatrix[MAXCOLNUM*MAXROWNUM]={0};
+        getVar(NULL,newMatrix,lineBuf);
+        matrixReload(matrix,gmif->row,gmif->col,newMatrix);
+    }    
+    if(rdP<wtP)
         readLine(lineBuf);//length
-    
 }
 
-int matrixReload(char **matrix,int row,int col,char *newMatrix)
+int matrixReload(char matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
 {
     int r,c;
     int len=row*col;
@@ -415,6 +418,44 @@ int matrixReload(char **matrix,int row,int col,char *newMatrix)
         }
 }
 
+int matrixPrint(char matrix[][MAXCOLNUM+2],int row,int col)
+{
+
+}
+
+int gameStart(GameInfo *gmif, NetInfo *netif)
+{
+    char lineBuf[100];
+    if(rdP<wtP)
+        {
+            readLine(lineBuf);//row
+            char row[3]={0};
+            getVar(NULL,row,lineBuf);
+            gmif->row=atoi(row);
+        }
+        if(rdP<wtP)
+        {
+            readLine(lineBuf);//col
+            char col[3]={0};
+            getVar(NULL,col,lineBuf);
+            gmif->col=atoi(col);
+        }    
+        if(rdP<wtP)
+        {
+            readLine(lineBuf);//gameid
+            char mapid[30]={0};
+            getVar(NULL,mapid,lineBuf);
+            gmif->mapid=atoi(mapid);
+        }    
+
+        if(rdP<wtP)
+        {
+            readLine(lineBuf);//delay
+            char delay[6]={0};
+            getVar(NULL,delay,lineBuf);
+            netif->delay=atoi(delay);
+        }    
+}
 
 
 
