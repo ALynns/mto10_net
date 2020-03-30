@@ -24,6 +24,11 @@
 
 #define IPADDRLENGTH 16
 
+#define MAXROWNUM 8
+#define MINROWNUM 5
+#define MAXCOLNUM 10
+#define MINCOLNUM 5
+
 typedef struct GameInfo
 {
     int gameMode;
@@ -39,15 +44,19 @@ typedef struct NetInfo
 {
     char *serverAddr;
     int port;
-    int timeOut;
+    int delay;
     int socketfd;
 } NetInfo;
 
 
 
-int getArg(int argc,char *argv[],int *gameMode,char *ipAddr,int *port,char *stuNo,char *stuPasswd,int *mapid,int *row,int *col,int *timeOut,int *stepMode);
+int getArg(int argc,char *argv[],int *gameMode,char *ipAddr,int *port,char *stuNo,char *stuPasswd,int *mapid,int *row,int *col,int *delay,int *stepMode);
 int localBind(NetInfo* netif);
 int login(GameInfo gmif,NetInfo netif);
 void dataSend(int socketfd,int sendBufSize,char *sendBuf);
 void dataRecv(int signo);
 int readLine(char *buf);
+int gamePro(GameInfo *gmif, NetInfo *netif);
+int matrixReload(char matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix);
+int matrixPrint(char matrix[][MAXCOLNUM+2],int row,int col);
+int gameStart(GameInfo *gmif, NetInfo *netif);
