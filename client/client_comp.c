@@ -387,21 +387,30 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
     static char matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {-1};
-    if(rdP<wtP)
-        readLine(lineBuf);//Type
-    if(rdP<wtP)
-        readLine(lineBuf);//content
-    gameStart(gmif,netif);
-        
-    if(rdP<wtP)
+    while (1)
     {
-        readLine(lineBuf);//map
-        char newMatrix[MAXCOLNUM*MAXROWNUM]={0};
-        getVar(NULL,newMatrix,lineBuf);
-        matrixReload(matrix,gmif->row,gmif->col,newMatrix);
-    }    
-    if(rdP<wtP)
-        readLine(lineBuf);//length
+        if (rdP < wtP)
+            readLine(lineBuf); //Type
+        if (rdP < wtP)
+        {
+            readLine(lineBuf); //content
+            char content[50];
+            getVar(NULL, content, lineBuf);
+            if (!strcmp(content, "GameOver"))
+                break;
+        }
+        gameStart(gmif, netif);
+
+        if (rdP < wtP)
+        {
+            readLine(lineBuf); //map
+            char newMatrix[MAXCOLNUM * MAXROWNUM] = {0};
+            getVar(NULL, newMatrix, lineBuf);
+            matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+        }
+        if (rdP < wtP)
+            readLine(lineBuf); //length
+    }
 }
 
 int matrixReload(char matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
@@ -410,17 +419,12 @@ int matrixReload(char matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
     int len=row*col;
 
     int i = 0;
-    for (r = 0; r < row; ++r)
-        for (c = 0; c < col; ++c)
+    for (r = 1; r <= row; ++r)
+        for (c = 1; c <= col; ++c)
         {
             matrix[r][c]=newMatrix[i];
             ++i;
         }
-}
-
-int matrixPrint(char matrix[][MAXCOLNUM+2],int row,int col)
-{
-
 }
 
 int gameStart(GameInfo *gmif, NetInfo *netif)
