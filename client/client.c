@@ -30,6 +30,7 @@ int main(int argc,char *argv[])
     setTimer(0,1000,0,1000);
     
     login(gmif,netif);
+    gamePro(gmif,netif);
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -136,6 +137,15 @@ int getArg(int argc,char *argv[],int *gameMode,char *serverAddr,int *port,char *
                 break;
             }
     }
+    srand(time(0));
+    if ((*row) == -1)
+    {
+        (*row) = rand() % 4 + 5;
+    }
+    if ((*col) == -1)
+    {
+        (*col) = rand() % 6 + 5;
+    }
     return 0;
 }
 
@@ -220,12 +230,13 @@ int login(GameInfo gmif,NetInfo netif)
     strcat(keyString,"*");
     getMD5(&keyString[8],gmif.stuPasswd);
 
+    
+
     while(readLine(buf))
         ;
     while(readLine(buf))
         ;
     getVar(NULL,sKey,buf);
-
     int i;
     for (i = 0; i < 40; ++i)
     {
@@ -236,6 +247,7 @@ int login(GameInfo gmif,NetInfo netif)
     }
 
     buf[0] = 0;
+
     packCreate(buf,"Type","ParameterAuthenticate");
     packCreate(buf,"MD5",key);
 
@@ -245,7 +257,7 @@ int login(GameInfo gmif,NetInfo netif)
     {
         char row[3];
         sprintf(row, "%d", gmif.row);
-        packCreate(buf, "Row", );
+        packCreate(buf, "Row", row);
     }
 
     if(gmif.col == -1)
@@ -254,7 +266,7 @@ int login(GameInfo gmif,NetInfo netif)
     {
         char col[3];
         sprintf(col, "%d", gmif.col);
-        packCreate(buf, "Col", );
+        packCreate(buf, "Col", col);
     }
 
     char map[30];
@@ -267,10 +279,12 @@ int login(GameInfo gmif,NetInfo netif)
 
     packLength(buf);
 
-    printf("%s", buf);
+    dataSend(netif.socketfd,strlen(buf),buf);
+    printf("%s\n",buf);
 
     while(readLine(buf))
     ;
+    
 }
 
 void dataSend(int socketfd,int sendBufSize,char *sendBuf)
@@ -299,12 +313,13 @@ void dataSend(int socketfd,int sendBufSize,char *sendBuf)
         }
     }
     //FD_ISSET(socketfd, &fdsr)判断套接字是否就绪，本题仅监控一个描述符可以略过
+    ret=0;
 	while (1)
 	{
-		ret = send(socketfd, sendBuf,sendBufSize, 0);
-		if (ret < 0)
-			continue;
-        else
+		ret = send(socketfd, &sendBuf[ret],sendBufSize, 0);
+        if(ret>0)
+            sendBufSize = sendBufSize - ret;
+        if(sendBufSize==0)
             break;
 	}
 }
@@ -369,6 +384,36 @@ int readLine(char *buf)
     return 0;
 }
 
+int gamePro(GameInfo gmif, NetInfo netif)
+{
+    char lineBuf[100];
+    static char matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {-1};
+    dataRecv(0);
+        while(readLine(lineBuf))//Type
+            printf("%s", lineBuf);
+        readLine(lineBuf);//content
+        readLine(lineBuf);//row
+        readLine(lineBuf);//col
+        readLine(lineBuf);//gameid
+        readLine(lineBuf);//delay
+        readLine(lineBuf);//map
+        readLine(lineBuf);//length
+    
+}
+
+int matrixReload(char **matrix,int row,int col,char *newMatrix)
+{
+    int r,c;
+    int len=row*col;
+
+    int i = 0;
+    for (r = 0; r < row; ++r)
+        for (c = 0; c < col; ++c)
+        {
+            matrix[r][c]=newMatrix[i];
+            ++i;
+        }
+}
 
 
 
