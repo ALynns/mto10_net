@@ -1,4 +1,5 @@
 #include "client.h"
+#include <stdarg.h>
 
 #define GLOBALBUFSIZE 512*1024
 
@@ -28,9 +29,7 @@ int main(int argc,char *argv[])
     signal(SIGALRM, dataRecv);
     setTimer(0,1000,0,1000);
     
-    login(gmif,&netif);
-
-    printf("%d,%d\n",wtP,rdP);
+    login(gmif,netif);
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -206,11 +205,16 @@ int localBind(NetInfo* netif)
     }
 }
 
-int login(GameInfo gmif,NetInfo* netif)
+int login(GameInfo gmif,NetInfo netif)
 {
     char buf[300]={0};
     unsigned char keyString[41];
+    unsigned char sKey[41];
+    unsigned char key[81];
+
     keyString[0]=0;
+    sKey[0]=0;
+    key[0]=0;
 
     strcat(keyString,gmif.stuNo);
     strcat(keyString,"*");
@@ -218,13 +222,55 @@ int login(GameInfo gmif,NetInfo* netif)
 
     while(readLine(buf))
         ;
-    printf("%s",buf);
     while(readLine(buf))
         ;
-    printf("%s",buf);
+    getVar(NULL,sKey,buf);
+
+    int i;
+    for (i = 0; i < 40; ++i)
+    {
+        int tmp=keyString[i]^sKey[i];
+        int de = tmp / 16, po = tmp % 16;
+        key[2 * i] = de  >= 10 ? de - 10 + 'a' : de + '0';
+        key[2 * i + 1] = po >= 10 ? po - 10 + 'a' : po + '0';
+    }
+
+    buf[0] = 0;
+    packCreate(buf,"Type","ParameterAuthenticate");
+    packCreate(buf,"MD5",key);
+
+    if(gmif.row == -1)
+        packCreate(buf, "Row", "-1");
+    else
+    {
+        char row[3];
+        sprintf(row, "%d", gmif.row);
+        packCreate(buf, "Row", );
+    }
+
+    if(gmif.col == -1)
+        packCreate(buf, "Col", "-1");
+    else
+    {
+        char col[3];
+        sprintf(col, "%d", gmif.col);
+        packCreate(buf, "Col", );
+    }
+
+    char map[30];
+    sprintf(map, "%d", gmif.mapid);
+    packCreate(buf, "GameID", map);
+
+    char delay[4];
+    sprintf(delay, "%d", netif.timeOut);
+    packCreate(buf, "Delay", delay);
+
+    packLength(buf);
+
+    printf("%s", buf);
+
     while(readLine(buf))
     ;
-    printf("%s",buf);
 }
 
 void dataSend(int socketfd,int sendBufSize,char *sendBuf)
@@ -322,5 +368,9 @@ int readLine(char *buf)
     }
     return 0;
 }
+
+
+
+
 
 

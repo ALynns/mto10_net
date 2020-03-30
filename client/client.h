@@ -47,7 +47,7 @@ typedef struct NetInfo
 
 int getArg(int argc,char *argv[],int *gameMode,char *ipAddr,int *port,char *stuNo,char *stuPasswd,int *mapid,int *row,int *col,int *timeOut,int *stepMode);
 int localBind(NetInfo* netif);
-int login(GameInfo gmif,NetInfo* netif);
+int login(GameInfo gmif,NetInfo netif);
 void dataSend(int socketfd,int sendBufSize,char *sendBuf);
 void dataRecv(int signo);
 int readLine(char *buf);

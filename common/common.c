@@ -30,4 +30,53 @@ void setTimer(int s_val,int us_val,int s_interval,int us_interval)
     setitimer(ITIMER_REAL, &new_value, &old_value);
 }
 
+int packCreate(char *buf, char *tp, char *tp_value)
+{
+    strcat(buf,tp);
+    strcat(buf," = ");
+    strcat(buf,tp_value);
+    strcat(buf,"\n\r");
+    return 0;
+}
 
+int packLength(char *buf)
+{
+    int len;
+    char tmp[10];
+
+    strcat(buf, "Length = ");
+
+    len = strlen(buf);//当前字符串长度
+
+    sprintf(tmp, "%d",len);//长度位数
+    len = len + strlen(tmp) + 2; //总字符串长度
+    sprintf(tmp, "%d",len);
+    if (len != strlen(buf) + strlen(tmp) + 2)
+        len++;
+
+    sprintf(tmp, "%d", len);
+    strcat(buf,tmp);
+    strcat(buf,"\n\r");
+    return 0;
+}
+
+int getVar(char *opt, char *dest, char *src)
+{
+    int i, flag;
+    int srcLength = strlen(src);
+    for (i = 0, flag = (opt == NULL ? 1 : 0); i < srcLength; ++i)
+    {
+        if (flag == 0 && src[i] == ' ' && opt != NULL)
+        {
+            strncpy(opt, src, i);
+            opt[i] = 0;
+            flag = 1;
+            printf("%s\n",opt);
+        }
+        if (flag == 1 && src[i - 1] == '=' && src[i] == 0x20 && dest != NULL)
+        {
+            strcpy(dest, &src[i + 1]);
+        }    
+    }
+
+}
