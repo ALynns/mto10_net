@@ -415,13 +415,8 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
     char packBuf[200]={0};
     gamePackCreate(lastRow,lastCol,packBuf);
     dataSend(netif->socketfd,strlen(packBuf),packBuf);
-    printf("%s",packBuf);
 
-    while(readLine(lineBuf)); //Type
-        while(readLine(lineBuf)); //content
-        printf("%s\n",lineBuf);
-
-    /*while (1)
+    while (1)
     {
         int endFlag=0;
         char content[50];
@@ -467,8 +462,7 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
         printf("本次选择坐标:Row=%d,Col=%d\n",lastRow,lastCol);
         gamePackCreate(lastRow,lastCol,packBuf);
         dataSend(netif->socketfd,strlen(packBuf),packBuf);
-        
-    };*/
+    };
 }
 
 int matrixReload(int matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
