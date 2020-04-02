@@ -23,21 +23,25 @@ int main(int argc,char *argv[])
     {
         return 0;
     }
-    localBind(&netif);
-
-    signal(SIGALRM, dataRecv);
-    setTimer(0,2000,0,2000);
-    
-    login(gmif,netif);
-    if(gmif.gameMode==BASEMODE)
+    int i;
+    for(i=0;i<64;++i)
+    {
+        localBind(&netif);
+        
+        dataRecv(0);
+        login(gmif,netif);
+        
         gamePro(&gmif,&netif);
 
-    if(gmif.gameMode==COMPMODE)
-    {
-        int i;
-        for(i=0;i<64;++i)
-            gamePro(&gmif,&netif);
-    }    
+        close(netif.socketfd);
+
+        if(gmif.gameMode==BASEMODE)
+            break;
+        
+        recvBufGlobal[0]=0;
+        rdP=0;
+        wtP=0;
+    }
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -230,7 +234,10 @@ int login(GameInfo gmif,NetInfo netif)
     unsigned char key[81]={0};
 
     strcat(keyString,gmif.stuNo);
-    strcat(keyString,"*");
+    if(gmif.gameMode==BASEMODE)
+        strcat(keyString,"*");
+    else
+        strcat(keyString,"-");
     getMD5(&keyString[8],gmif.stuPasswd);
     
 
@@ -359,7 +366,7 @@ void dataRecv(int signo)
 	while (1)
 	{
 		ret = recv(netif.socketfd, &(recvBufGlobal[wtP]), GLOBALBUFSIZE, 0);
-		if (ret < 0)
+        if (ret < 0)
 			continue;
 		else
 			break;
@@ -390,78 +397,105 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
     static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
+
+    dataRecv(0);
     
     
     while(readLine(lineBuf)); //Type
 
-    while(readLine(lineBuf)); //content
+    readLine(lineBuf); //content
     printf("%s\n",lineBuf);
       
     gameStart(gmif, netif);
 
-    while(readLine(lineBuf)); //map
+    readLine(lineBuf); //map
+    printf("%s\n",lineBuf);
     char newMatrix[MAXCOLNUM * MAXROWNUM] = {0};
     getVar(NULL, newMatrix, lineBuf);
     matrixReload(matrix, gmif->row, gmif->col, newMatrix);
     matrixPrintf(matrix,gmif->row, gmif->col);
 
-    while(readLine(lineBuf)); //length
+    readLine(lineBuf); //length
 
     int lastRow,lastCol;
 
     pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-    printf("本次选择坐标:Row=%d,Col=%d\n",lastRow,lastCol);
+    printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
 
     char packBuf[200]={0};
-    gamePackCreate(lastRow,lastCol,packBuf);
+    gamePackCreate(lastRow,lastCol-1,packBuf);
     dataSend(netif->socketfd,strlen(packBuf),packBuf);
-
+    
+    
     while (1)
     {
+        dataRecv(0);
         int endFlag=0;
+        int sucFlag=1;
         char content[50];
+
         while(readLine(lineBuf)); //Type
-        while(readLine(lineBuf)); //content
+
+        readLine(lineBuf); //content
         printf("%s\n",lineBuf);
         getVar(NULL, content, lineBuf);
         if (!strcmp(content, "GameOver")||!strcmp(content, "GameTimeout"))
         {
             endFlag=1;
         }
+        if(!strcmp(content, "MergeFailed"))
+        {
+            sucFlag=0;
+        }
 
-        while(readLine(lineBuf));//gameid
+        readLine(lineBuf);//gameid
         printf("%s\n",lineBuf);
 
-        while(readLine(lineBuf));//step
+        readLine(lineBuf);//step
         printf("%s\n",lineBuf);
 
-        while(readLine(lineBuf));//score
+        readLine(lineBuf);//score
         printf("%s\n",lineBuf);
         
-        while(readLine(lineBuf));//maxvalue
+        readLine(lineBuf);//maxvalue
         printf("%s\n",lineBuf);
         
-        while(readLine(lineBuf));//oldmap
-        printf("%s\n",lineBuf);
+
+        readLine(lineBuf);//oldmap
+        if(sucFlag)
+            printf("%s\n",lineBuf);
         
         if(!endFlag)
         {
-            while(readLine(lineBuf));//newmap
-            printf("%s\n",lineBuf);
-            getVar(NULL, newMatrix, lineBuf);
-            matrixReload(matrix, gmif->row, gmif->col, newMatrix);
-            
+            if(sucFlag)
+            {
+                readLine(lineBuf);//newmap
+                printf("%s\n",lineBuf);
+                getVar(NULL, newMatrix, lineBuf);
+                matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+                matrixPrintf(matrix,gmif->row, gmif->col);
+            }
         }
-        matrixPrintf(matrix,gmif->row, gmif->col);
-        while(readLine(lineBuf));//length
+        else
+        {
+            if(sucFlag)
+            {
+                getVar(NULL, newMatrix, lineBuf);
+                matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+                matrixPrintf(matrix,gmif->row, gmif->col);
+            }
+        }
+        
+        readLine(lineBuf);//length
 
         if(endFlag==1)
             break;
 
         pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-        printf("本次选择坐标:Row=%d,Col=%d\n",lastRow,lastCol);
-        gamePackCreate(lastRow,lastCol,packBuf);
+        printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+        gamePackCreate(lastRow,lastCol-1,packBuf);
         dataSend(netif->socketfd,strlen(packBuf),packBuf);
+        
     };
 }
 
@@ -485,25 +519,25 @@ int gameStart(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
     
-    while(readLine(lineBuf));//row
+    readLine(lineBuf);//row
     printf("%s\n",lineBuf);
     char row[3]={0};
     getVar(NULL,row,lineBuf);
     gmif->row=atoi(row);
     
-    while(readLine(lineBuf));//col
+    readLine(lineBuf);//col
     printf("%s\n",lineBuf);
     char col[3]={0};
     getVar(NULL,col,lineBuf);
     gmif->col=atoi(col);
 
-    while(readLine(lineBuf));//gameid
+    readLine(lineBuf);//gameid
     printf("%s\n",lineBuf);
     char mapid[30]={0};
     getVar(NULL,mapid,lineBuf);
     gmif->mapid=atoi(mapid);
 
-    while(readLine(lineBuf));//delay
+    readLine(lineBuf);//delay
     printf("%s\n",lineBuf);
     char delay[6]={0};
     getVar(NULL,delay,lineBuf);
@@ -523,7 +557,7 @@ int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag
     {
         maxRow=0;
         maxCol=0;
-        maxSoc=0;
+        maxSoc=100;
         curDigit=0;
         curNum=0;
         curSoc=0;
@@ -538,8 +572,8 @@ int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag
                 curNum=0;
                 curSoc=0;
                 pointChoose(matrix,gmif,r,c,1,NULL,NULL);
-                curSoc=curDigit*curNum*3;
-                if(curSoc>maxSoc&&curNum>1)
+                curSoc=curDigit;
+                if(curSoc<maxSoc&&curNum>1)
                 {
                     maxSoc=curSoc;
                     maxRow=r;
@@ -594,7 +628,3 @@ int gamePackCreate(int row,int col,char *packBuf)
 
     packLength(packBuf);
 }
-
-
-
-
