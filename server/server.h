@@ -5,19 +5,19 @@
 
 #endif
 
-//运行参数
+//杩愯鍙傛暟
 #define ARGVNUM 11
 
-//游戏模式
+//娓告垙妯″紡
 #define HELPMODE 0
 #define BASEMODE 1
 #define COMPMODE 2
 
-//单步模式
+//鍗曟妯″紡
 #define STEPPINGMODE_OFF 0
 #define STEPPINGMODE_ON 1
 
-//账号参数
+//璐﹀彿鍙傛暟
 #define IDLENGTH 7
 #define PWDLENGTH 32
 #define COMPWDLENGTH 32
@@ -33,6 +33,14 @@ typedef struct userConnect{
     int socketfd;
     int row;
     int col;
+    int mapid;
     int map;
-    int 
+    int score;
+    int gameMode;
+    int state;
+    int outTime;
 }userConnect;
+
+
+
+int packAnalysis(int packType,void *pack);
