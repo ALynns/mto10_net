@@ -80,3 +80,5 @@ int getVar(char *opt, char *dest, char *src)
     }
 
 }
+
+int  packetAnalyzing(char *packBuf,void )
