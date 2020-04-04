@@ -29,6 +29,12 @@
 #define MAXCOLNUM 10
 #define MINCOLNUM 5
 
+//包类型
+#define PARAMETERAUTHENTICATE 1
+#define SECURITYSTRING 2
+#define GAMEPROGRESS 3
+#define COORDINATE 4
+
 typedef struct userConnect{
     int socketfd;
     int row;
@@ -41,6 +47,15 @@ typedef struct userConnect{
     int outTime;
 }userConnect;
 
+typedef struct ParameterAuthenticatePack{
+    const char *packType="ParameterAuthenticate";
+    char MD5[81];
+};
+
+typedef struct SecurityStringPack{
+    const char *packType="SecurityString";
+    char content[40];
+};
 
 
 int packAnalysis(int packType,void *pack);
