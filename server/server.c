@@ -3,9 +3,64 @@
 int main()
 {
     daemon(1,1);
+    localBind()
+
 }
 
-int hostBind(char *IPAddr,char *port,int block)
+int packAnalysis(char *buf, int *packType, void *pack)
+{
+    char *tempBuf,*tempStr;
+    tempBuf = strtok(buf, "\r\n");//获取Type行信息
+    if(tempBuf!=NULL)
+    {
+        tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+        if(!strcmp(tempStr,"ParameterAuthenticate"))
+        {
+            (*packType)=PARAMETERAUTHENTICATE;
+        }
+        if(!strcmp(tempStr,"Coordinate"))
+        {
+            (*packType)=COORDINATE;
+        }
+    }
+
+    switch(*packType)
+    {
+        case PARAMETERAUTHENTICATE:
+        {
+            tempStr = strtok(NULL, "\r\n");//获取MD5
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            strcpy((ParameterAuthenticatePack *)pack->MD5,);
+            tempStr = strtok(NULL, "\r\n");//获取Row
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (ParameterAuthenticatePack *)pack->row=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//获取Col
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (ParameterAuthenticatePack *)pack->col=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//获取GameID
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (ParameterAuthenticatePack *)pack->gameID=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//获取delay
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (ParameterAuthenticatePack *)pack->delay=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//长度
+            break;
+        }
+        case COORDINATE :
+        {
+            tempStr = strtok(NULL, "\r\n");//获取Row
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (CoordinatePack *)pack->row=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//获取Col
+            tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+            (CoordinatePack *)pack->col=atoi(tempStr);
+            tempStr = strtok(NULL, "\r\n");//长度
+            break;
+        }
+    }
+}
+
+int hostBind(char *IPAddr,char *port)
 {
     struct sockaddr_in serviceAddr;
     int ret;

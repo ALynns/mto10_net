@@ -5,19 +5,19 @@
 
 #endif
 
-//è¿è¡Œå‚æ•°
+//ÔËĞĞ²ÎÊı
 #define ARGVNUM 11
 
-//æ¸¸æˆæ¨¡å¼
+//ÓÎÏ·Ä£Ê½
 #define HELPMODE 0
 #define BASEMODE 1
 #define COMPMODE 2
 
-//å•æ­¥æ¨¡å¼
+//µ¥²½Ä£Ê½
 #define STEPPINGMODE_OFF 0
 #define STEPPINGMODE_ON 1
 
-//è´¦å·å‚æ•°
+//ÕËºÅ²ÎÊı
 #define IDLENGTH 7
 #define PWDLENGTH 32
 #define COMPWDLENGTH 32
@@ -29,7 +29,7 @@
 #define MAXCOLNUM 10
 #define MINCOLNUM 5
 
-//åŒ…ç±»å‹
+//°üÀàĞÍ
 #define PARAMETERAUTHENTICATE 1
 #define SECURITYSTRING 2
 #define GAMEPROGRESS 3
@@ -48,14 +48,17 @@ typedef struct userConnect{
 }userConnect;
 
 typedef struct ParameterAuthenticatePack{
-    const char *packType="ParameterAuthenticate";
     char MD5[81];
-};
+    int row;
+    int col;
+    int gameID;
+    int delay;
+}ParameterAuthenticatePack;
 
-typedef struct SecurityStringPack{
-    const char *packType="SecurityString";
-    char content[40];
-};
+typedef struct CoordinatePack{
+    int row;
+    int col;
+}CoordinatePack;
 
-
-int packAnalysis(int packType,void *pack);
+int hostBind(char *IPAddr, char *port);
+int packAnalysis(char *buf, int *packType, void *pack);
