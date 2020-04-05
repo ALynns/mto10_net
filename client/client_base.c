@@ -386,43 +386,137 @@ int readLine(char *buf)
 int gamePro(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
-    static char matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {-1};
-    if(rdP<wtP)
-        readLine(lineBuf);//Type
-    if(rdP<wtP)
-        readLine(lineBuf);//content
-    gameStart(gmif,netif);
-        
-    if(rdP<wtP)
+    static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
+
+    dataRecv(0);
+    
+    
+    while(readLine(lineBuf)); //Type
+
+    readLine(lineBuf); //content
+    printf("%s\n",lineBuf);
+      
+    gameStart(gmif, netif);
+
+    readLine(lineBuf); //map
+    printf("%s\n",lineBuf);
+    char newMatrix[MAXCOLNUM * MAXROWNUM] = {0};
+    getVar(NULL, newMatrix, lineBuf);
+    matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+    matrixPrintf(matrix,gmif->row, gmif->col);
+
+    readLine(lineBuf); //length
+
+    int lastRow,lastCol;
+
+    pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
+    printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+
+    char packBuf[200]={0};
+    gamePackCreate(lastRow,lastCol-1,packBuf);
+    dataSend(netif->socketfd,strlen(packBuf),packBuf);
+    
+    
+    while (1)
     {
-        readLine(lineBuf);//map
-        char newMatrix[MAXCOLNUM*MAXROWNUM]={0};
-        getVar(NULL,newMatrix,lineBuf);
-        matrixReload(matrix,gmif->row,gmif->col,newMatrix);
-    }    
-    if(rdP<wtP)
+        dataRecv(0);
+        int endFlag=0;
+        int sucFlag=1;
+        char content[50];
+
+        while(readLine(lineBuf)); //Type
+
+        readLine(lineBuf); //content
+        printf("%s\n",lineBuf);
+        getVar(NULL, content, lineBuf);
+        if (!strcmp(content, "GameOver")||!strcmp(content, "GameTimeout"))
+        {
+            endFlag=1;
+        }
+        if(!strcmp(content, "MergeFailed"))
+        {
+            sucFlag=0;
+        }
+
+        readLine(lineBuf);//gameid
+        printf("%s\n",lineBuf);
+
+        readLine(lineBuf);//step
+        printf("%s\n",lineBuf);
+
+        readLine(lineBuf);//score
+        printf("%s\n",lineBuf);
+        
+        readLine(lineBuf);//maxvalue
+        printf("%s\n",lineBuf);
+        
+
+        readLine(lineBuf);//oldmap
+        if(sucFlag)
+            printf("%s\n",lineBuf);
+        
+        if(!endFlag)
+        {
+            if(sucFlag)
+            {
+                readLine(lineBuf);//newmap
+                printf("%s\n",lineBuf);
+                getVar(NULL, newMatrix, lineBuf);
+                matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+                matrixPrintf(matrix,gmif->row, gmif->col);
+            }
+        }
+        else
+        {
+            if(sucFlag)
+            {
+                getVar(NULL, newMatrix, lineBuf);
+                matrixReload(matrix, gmif->row, gmif->col, newMatrix);
+                matrixPrintf(matrix,gmif->row, gmif->col);
+            }
+        }
+        
         readLine(lineBuf);//length
+
+        if(endFlag==1)
+            break;
+
+        pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
+        printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+        gamePackCreate(lastRow,lastCol-1,packBuf);
+        dataSend(netif->socketfd,strlen(packBuf),packBuf);
+        
+    };
 }
 
-int matrixReload(char matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
+int matrixReload(int matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
 {
     int r,c;
     int len=row*col;
 
     int i = 0;
     for (r = 1; r <= row; ++r)
+    {
         for (c = 1; c <= col; ++c)
         {
-            matrix[r][c]=newMatrix[i];
+            matrix[r][c]=newMatrix[i]-'0';
             ++i;
         }
+    }    
 }
 
-int matrixPrint(char matrix[][MAXCOLNUM+2],char *map,int row,int col)
+int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
 {
-    printf("服务器返回行=%d\n",row);
-    printf("服务器返回列=%d\n",col);
-    printf("服务器返回地图=%s\n",map);
+    int r,c;
+    printf("\n");
+    for(r=1;r<=row;++r)
+    {
+        for(c=1;c<=col;++c)
+        {
+            printf("%d ",matrix[r][c]>0?matrix[r][c]:-1*matrix[r][c]);
+        }
+        printf("\n");
+    }
 }
 
 int gameStart(GameInfo *gmif, NetInfo *netif)
@@ -457,6 +551,77 @@ int gameStart(GameInfo *gmif, NetInfo *netif)
             getVar(NULL,delay,lineBuf);
             netif->delay=atoi(delay);
         }    
+}
+
+int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag,int *lastRow,int *lastCol)
+{
+    static int maxRow=0,maxCol=0,maxSoc=0;
+    static int curDigit=0,curNum=0,curSoc=0;
+
+    if(matrix[row][col]==0)//边缘
+        return 0;
+    
+    
+    if(flag==0)
+    {
+        maxRow=0;
+        maxCol=0;
+        maxSoc=100;
+        curDigit=0;
+        curNum=0;
+        curSoc=0;
+
+        int r,c;
+        for(r=1;r<=gmif.row;++r)
+            for(c=1;c<=gmif.col;++c)
+            {
+                if(matrix[r][c]<=0)
+                    continue;
+                curDigit=matrix[r][c];
+                curNum=0;
+                curSoc=0;
+                pointChoose(matrix,gmif,r,c,1,NULL,NULL);
+                curSoc=curDigit;
+                if(curSoc<maxSoc&&curNum>1)
+                {
+                    maxSoc=curSoc;
+                    maxRow=r;
+                    maxCol=c;
+                }    
+            }
+        (*lastRow)=maxRow;
+        (*lastCol)=maxCol;
+        return 0;
+    }
+    else
+    {
+        if(matrix[row][col]==curDigit)
+        {
+            matrix[row][col]=matrix[row][col]*(-1);
+            curNum++;
+            pointChoose(matrix,gmif,row-1,col,1,NULL,NULL);
+            pointChoose(matrix,gmif,row+1,col,1,NULL,NULL);
+            pointChoose(matrix,gmif,row,col-1,1,NULL,NULL);
+            pointChoose(matrix,gmif,row,col+1,1,NULL,NULL);
+        }    
+    }
+
+    
+}
+
+int gamePackCreate(int row,int col,char *packBuf)
+{
+    packBuf[0]=0;
+    char tmp[5]={0};
+    packCreate(packBuf,"Type","Coordinate");
+
+    sprintf(tmp,"%c",row+'A'-1);
+    packCreate(packBuf,"Row",tmp);
+
+    sprintf(tmp,"%c",col+'0');
+    packCreate(packBuf,"Col",tmp);
+
+    packLength(packBuf);
 }
 
 

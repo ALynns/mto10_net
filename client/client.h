@@ -1,7 +1,7 @@
 #ifndef __CLIENT__H
 #define __CLIENT__H
 
-#include "../common/common.h"
+#include "common.h"
 
 #endif
 
