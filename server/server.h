@@ -1,12 +1,15 @@
 #ifndef __CLIENT__H
 #define __CLIENT__H
 
-#include "../common/common.h"
+#include "common.h"
 
 #endif
 
 //运行参数
-#define ARGVNUM 11
+#define ARGVNUM 2
+
+//运行状态
+#define TIMEOUT -1
 
 //游戏模式
 #define HELPMODE 0
@@ -29,23 +32,35 @@
 #define MAXCOLNUM 10
 #define MINCOLNUM 5
 
-//包类型
+//包类型、游戏状态
 #define PARAMETERAUTHENTICATE 1
 #define SECURITYSTRING 2
 #define GAMEPROGRESS 3
 #define COORDINATE 4
 
-typedef struct userConnect{
+typedef struct NetInfo
+{
+    int localSocketfd;
+    char serverAddr[16];
+    int port;
+    MYSQL *conn_ptr;
+} NetInfo;
+
+typedef struct UserConnect{
     int socketfd;
+    int gameStatus;
+    char secString[41];
+    int gameMode;
+    int round;
+    int step;
     int row;
     int col;
     int mapid;
     int map;
     int score;
-    int gameMode;
-    int state;
-    int outTime;
-}userConnect;
+    int delay;
+    int lastTime;
+}UserConnect;
 
 typedef struct ParameterAuthenticatePack{
     char MD5[81];
@@ -60,5 +75,18 @@ typedef struct CoordinatePack{
     int col;
 }CoordinatePack;
 
-int hostBind(char *IPAddr, char *port);
+int getArg(int argc,char *argv[],char *serverAddr,int *port);
+int hostBind(char *serverAddr, int port);
 int packAnalysis(char *buf, int *packType, void *pack);
+int connectClose(UserConnect destCon);
+int clientConnect(NetInfo *netif, UserConnect *userConnect);
+int clientAccept(int serverSocketfd);
+int login(NetInfo *netif, UserConnect *destCon);
+int secPackSend(UserConnect *descCon);
+int dataSend(UserConnect uCon,int sendBufSize,char *sendBuf);
+int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay);
+int gamePro();
+
+int mysqlInit(NetInfo *netif);
+int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
+int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);

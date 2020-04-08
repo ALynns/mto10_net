@@ -15,6 +15,7 @@
 #include <sys/stat.h> 
 #include <netinet/in.h>
 #include <sys/errno.h>
+#include <arpa/inet.h>
 
 #include "md5.h"
 

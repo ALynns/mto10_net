@@ -236,6 +236,7 @@ int login(GameInfo gmif,NetInfo netif)
     while(readLine(buf))
         ;
     getVar(NULL,sKey,buf);
+
     int i;
     for (i = 0; i < 40; ++i)
     {
@@ -361,6 +362,7 @@ void dataRecv(int signo)
 		else
 			break;
 	}
+    //printf("%s\n",&recvBufGlobal[wtP]);
     if (ret >= 0)
         wtP = wtP + ret;
 }

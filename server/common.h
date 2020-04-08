@@ -15,6 +15,9 @@
 #include <sys/stat.h> 
 #include <netinet/in.h>
 #include <sys/errno.h>
+#include <arpa/inet.h>
+#include <mysql.h>
+
 
 #include "md5.h"
 
@@ -22,6 +25,6 @@
 
 int getMD5(unsigned char *dest,unsigned char *src);
 void setTimer(int s_val,int us_val,int s_interval,int us_interval);
-int packCreate(char *buf, char *tp, char *tp_value);
+int packCreate(char *buf,const char *tp,const char *tp_value);
 int packLength(char *buf);
 int getVar(char *opt, char *dest, char *src);
