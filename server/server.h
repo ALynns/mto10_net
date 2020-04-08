@@ -35,8 +35,11 @@
 //包类型、游戏状态
 #define PARAMETERAUTHENTICATE 1
 #define SECURITYSTRING 2
-#define GAMEPROGRESS 3
-#define COORDINATE 4
+#define GAMESTART 3
+#define MERGESUCCEEDED 4
+#define MERGEFAILED 5
+#define GAMEOVER 6
+#define COORDINATE 7
 
 typedef struct NetInfo
 {
@@ -48,17 +51,18 @@ typedef struct NetInfo
 
 typedef struct UserConnect{
     int socketfd;
-    int gameStatus;
-    char secString[41];
     int gameMode;
+    char secString[41];
+    int gameStatus;
     int round;
     int step;
     int row;
     int col;
     int mapid;
-    int oldmap;
-    int newmap;
+    char *oldMap[(MAXCOLNUM+2)(MAXROWNUM+2)];
+    char *newMap[(MAXCOLNUM+2)(MAXROWNUM+2)];
     int score;
+    int maxValue;
     int delay;
     int lastTime;
 }UserConnect;
@@ -92,6 +96,9 @@ int mysqlInit(NetInfo *netif);
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);
 
-int gamePro();
-int gameInit(UserConnect destCon,int matrix[][MAXCOLNUM+2],int row,int col);
+int gamePro(UNetInfo *netif, serConnect *destCon);
+int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2]);
 int gamePack(UserConnect destCon);
+int mapInit(int matrix[][MAXCOLNUM+2]);
+int mapFill(int matrix[][MAXCOLNUM+2],int row,int col,int maxNum);
+int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map);

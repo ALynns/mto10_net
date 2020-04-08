@@ -362,9 +362,10 @@ int secPackSend(UserConnect *descCon)
     dataSend(*descCon, strlen(secPack), secPack);
 }
 
-int gamePro()
+int gamePro(NetInfo *netif, UserConnect *destCon)
 {
     static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
+    gameInit(destCon,matrix);
 
 }
 
@@ -431,7 +432,239 @@ int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, 
     mysqlOpt(conn_ptr, optStr, row, col, result);
 }
 
-int mapInit(int matrix[][MAXCOLNUM+2],int row,int col)
+int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2])
 {
-    
+    destCon->gameStatus = GAMESTART;
+    destCon->round = 1;
+    destCon->step = 0;
+    if (destCon->mapid == -1)
+    {
+        destCon->mapid=time(0);
+        srand(destCon->mapid);
+    }
+    mapInit(matrix);
+    mapFill(matrix, destCon->row, destCon->col, 3);
+    mapStr(matrix, destCon->row, destCon->col, destCon->oldMap);
+    mapStr(matrix, destCon->row, destCon->col, destCon->newMap);
+    destCon->score = 0;
+    destCon->maxValue = 3;
+    return 0;
+}
+
+int gamePack(UserConnect destCon)
+{
+    char gamePackbuf[500] = {0};
+    char temp[50] = {0};
+    packCreate(gamePackbuf,"Type","GameProgress");
+    switch (destCon.gameStatus)
+    {
+        case GAMESTART:
+        {
+            packCreate(gamePackbuf, "Content", "GameStart");
+
+            sprintf(temp,"%d",destCon.row);
+            packCreate(gamePackbuf, "Row", temp);
+
+            sprintf(temp,"%d",destCon.col);
+            packCreate(gamePackbuf, "Col", temp);
+
+            sprintf(temp,"%d",destCon.gameID);
+            packCreate(gamePackbuf, "GameID", temp);
+
+            sprintf(temp,"%d",destCon.delay);
+            packCreate(gamePackbuf, "Delay", temp);
+
+            sprintf(temp,"%s",destCon.newMap);
+            packCreate(gamePackbuf, "Map", temp);
+
+            break;
+        }
+        case MERGESUCCEEDED:
+        {
+            packCreate(gamePackbuf, "Content", "MergeSucceeded");
+            break;
+        }
+        case MERGEFAILED:
+        {
+            packCreate(gamePackbuf, "Content", "MergeFailed");
+            break;
+        }
+        case GAMEOVER:
+        {
+            packCreate(gamePackbuf, "Content", "GameOver");
+            break;
+        }
+
+    }
+    packLength(gamePackbuf);
+}
+
+int mapInit(int matrix[][MAXCOLNUM+2])
+{
+    int r,c;
+    for(r=0;r<=MAXROWNUM;++r)
+        for(c=0;c<=MAXCOLNUM;++c)
+            matrix[r][c] = 0;
+    return 0;
+}
+
+int mapFill(int matrix[][MAXCOLNUM+2],int row,int col,int maxNum)
+{
+    int r, c;
+    switch(maxNum)
+    {
+        case 3:
+        {
+            for (r = 1; r <= row; ++r)
+                for (c = 1; c <= col; ++c)
+                    if (matrix[r][c] < 1)
+                    {
+                        matrix[r][c] = rand() % 3 + 1;
+                    }
+            break;
+        }
+        case 4:
+        {
+            for (r = 1; r <= row; ++r)
+                for (c = 1; c <= col; ++c)
+                    if (matrix[r][c] < 1)
+                    {
+                        int t=rand() % 100;
+                        if(t>=90)
+                        {
+                            matrix[r][c] = 4;
+                            continue;
+                        }   
+                        if(t>=60)
+                        {
+                            matrix[r][c] = 3;
+                            continue;
+                        } 
+                        if(t>=30)
+                        {
+                            matrix[r][c] = 2;
+                            continue;
+                        }
+                        if(t>=0)
+                        {
+                            matrix[r][c] = 1;
+                            continue;
+                        }
+                    }
+            break;
+        }
+        case 5:
+        {
+            for (r = 1; r <= row; ++r)
+                for (c = 1; c <= col; ++c)
+                    if (matrix[r][c] < 1)
+                    {
+                        int t=rand() % 100;
+                        if(t>=90)
+                        {
+                            matrix[r][c] = 5;
+                            continue;
+                        }   
+                        if(t>=75)
+                        {
+                            matrix[r][c] = 4;
+                            continue;
+                        } 
+                        if(t>=50)
+                        {
+                            matrix[r][c] = 3;
+                            continue;
+                        } 
+                        if(t>=25)
+                        {
+                            matrix[r][c] = 2;
+                            continue;
+                        }
+                        if(t>=0)
+                        {
+                            matrix[r][c] = 1;
+                            continue;
+                        }
+                    }
+            break;
+        }
+        case 6:
+        {
+            for (r = 1; r <= row; ++r)
+                for (c = 1; c <= col; ++c)
+                    if (matrix[r][c] < 1)
+                    {
+                        int t=rand() % 100;
+                        if(t>=95)
+                        {
+                            matrix[r][c] = 5;
+                            continue;
+                        }   
+                        if(t>=80)
+                        {
+                            matrix[r][c] = 5;
+                            continue;
+                        }   
+                        if(t>=60)
+                        {
+                            matrix[r][c] = 4;
+                            continue;
+                        } 
+                        if(t>=40)
+                        {
+                            matrix[r][c] = 3;
+                            continue;
+                        } 
+                        if(t>=20)
+                        {
+                            matrix[r][c] = 2;
+                            continue;
+                        }
+                        if(t>=0)
+                        {
+                            matrix[r][c] = 1;
+                            continue;
+                        }
+                    }
+            break;
+        }
+        default:
+        {
+            for (r = 1; r <= row; ++r)
+                for (c = 1; c <= col; ++c)
+                    if (matrix[r][c] < 1)
+                    {
+                        int t = rand() % 100;
+                        if (t >= 95)
+                        {
+                            matrix[r][c] = maxNum;
+                            continue;
+                        }
+                        if (t >= 90)
+                        {
+                            matrix[r][c] = maxNum - 1;
+                            continue;
+                        }
+                        if (t >= 80)
+                        {
+                            matrix[r][c] = maxNum - 2;
+                            continue;
+                        }
+                        matrix[r][c] = t / (80 / (maxNum - 3));
+                    }
+            break;
+        }
+    }
+}
+
+int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map)
+{
+    int r,c;
+    for(r=1;r<=row;++r)
+        for(c=1;c<=col;++c)
+        {
+            map[col * (r - 1) + c - 1] = matrix[r][c];
+        }
+    map[row * col] = 0;
+    return 0;
 }
