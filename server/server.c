@@ -10,6 +10,8 @@ int main(int argc,char *argv[])
     getArg(argc,argv,netif.serverAddr,&netif.port);
 
     netif.localSocketfd=hostBind(netif.serverAddr,netif.port);
+
+    mysqlInit(&netif);
     
     clientConnect(&netif, &u_con);
 
@@ -37,7 +39,7 @@ int getArg(int argc,char *argv[],char *serverAddr,int *port)
                     }
                     case 1:
                     {
-                        *port=atoi(argv[i+1]);
+                        (*port)=atoi(argv[i+1]);
                         break;
                     }
                     default:
@@ -50,11 +52,11 @@ int getArg(int argc,char *argv[],char *serverAddr,int *port)
 
 int packAnalysis(char *buf, int *packType, void *pack)
 {
-    char *tempBuf,*tempStr;
-    tempBuf = strtok(buf, "\r\n");//获取Type行信息
-    if(tempBuf!=NULL)
+    char *tempStr;
+    tempStr = strtok(buf, "\r\n");//获取Type行信息
+    if(tempStr!=NULL)
     {
-        tempStr=(char*)memchr(tempBuf, '=', strlen(tempBuf))+2;
+        tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
         if(!strcmp(tempStr,"ParameterAuthenticate"))
         {
             (*packType)=PARAMETERAUTHENTICATE;
@@ -150,15 +152,14 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         FD_ZERO(&fdsr);
 
         FD_SET(uCon.socketfd, &fdsr);
-        if(delay)
+        if(!delay)
             ret = select(uCon.socketfd + 1, &fdsr, NULL, NULL, NULL);
         else
             ret = select(uCon.socketfd + 1, &fdsr, NULL, NULL, &tv);
         
-        if (ret < 0 && errno != EINTR)
+        if (ret < 0 )//&& errno != EINTR)
         {
-            printf("select error\n");
-            exit(-1);
+            continue;
         }
         else
         {
@@ -178,7 +179,8 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
     while (1)
     {
         ret = recv(uCon.socketfd, recvBuf, bufSize, 0);
-        if (ret < 0)
+        printf("%s\n",recvBuf);
+        if (ret <= 0)
             continue;
         else
         {
@@ -186,11 +188,10 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         }
         
     }
-    printf("%s\n",recvBuf);
     return ret;
 }
 
-int dataSend(UserConnect uCon,int bufSize,char *sendBuf)
+int dataSend(UserConnect uCon, int bufSize, char *sendBuf)
 {
     int ret;
 
@@ -202,8 +203,8 @@ int dataSend(UserConnect uCon,int bufSize,char *sendBuf)
 
         FD_SET(u_con.socketfd, &fdsr);
 
-        struct timeval tv;
-        tv.tv_sec = u_con.delay / 1000;
+        //struct timeval tv;
+        //tv.tv_sec = delay / 1000;
         ret = select(u_con.socketfd + 1, NULL, &fdsr, NULL, NULL);
 
         if (ret < 0 && errno != EINTR)
@@ -272,8 +273,18 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
         //FD_ISSET(serverSocketfd, &fdsr)判断套接字是否就绪，本处仅监控一个描述符可以略过
         if (ret > 0)
         {
-            clientAccept(netif->localSocketfd);
-            login(netif,userConnect);
+            //fork();
+            //if (getpid() == 0)
+            //{
+                clientAccept(netif->localSocketfd);
+                if (!login(netif, userConnect))
+                {
+                    gamePro();
+
+                }
+
+                exit(-1);
+            //}
         }
     }
 
@@ -290,12 +301,49 @@ int clientAccept(int serverSocketfd)
 
 int login(NetInfo *netif, UserConnect *destCon)
 {
-    char recvBuf[500];
+    char recvBuf[300] = {0}, keyString[41] = {0}, ***result;
     int p_type;
     ParameterAuthenticatePack p_pack;
     dataRecv(*destCon,500,recvBuf,0);
     packAnalysis(recvBuf,&p_type,&p_pack);
-    printf("%s,%d,%d,%d,%d",)
+    p_pack.MD5[80] = 0;
+    
+    int i;
+    for (i = 0; i < 40; ++i)
+    {
+        p_pack.MD5[2 * i] = p_pack.MD5[2 * i] >= 'a' ? p_pack.MD5[2 * i] - 'a' + 10 : p_pack.MD5[2 * i] - '0';
+        p_pack.MD5[2 * i + 1] = p_pack.MD5[2 * i + 1] >= 'a' ? p_pack.MD5[2 * i + 1] - 'a' + 10 : p_pack.MD5[2 * i + 1] - '0';
+        char tmp = p_pack.MD5[2 * i] * 16 + p_pack.MD5[2 * i + 1];
+        keyString[i] = tmp ^ destCon->secString[i];   
+    }
+    char opt[50] = {0}, stu_no[8] = {0};
+
+    if(keyString[7]=='*')
+    {
+        destCon->gameMode=BASEMODE;
+        strncpy(stu_no, keyString, 7);
+    }
+    else
+    {
+        destCon->gameMode=COMPMODE;
+        for(i=6;i>=0;--i)
+        {
+            stu_no[6 - i] = keyString[i];
+        }
+    }
+    
+
+    strcat(opt,"stu_no=");
+    strcat(opt,stu_no);
+    
+    result[0][0]=(char *)malloc(33);
+    result[0][0][0]=0;
+    mysqlSelect(netif->conn_ptr,"stu_password","student",opt,NULL,NULL,result);
+    if(!strcmp(result[0][0],&keyString[8]))
+        return 0;
+    else
+        return -1;
+    
 }
 
 int secPackSend(UserConnect *descCon)
@@ -303,7 +351,7 @@ int secPackSend(UserConnect *descCon)
     int i;
     char secPack[100] = {0};
     srand(time(0));
-    for(i=0;i<40;++i)
+    for (i = 0; i < 40; ++i)
     {
         descCon->secString[i] = rand() % 94 + 33;
     }
@@ -316,13 +364,14 @@ int secPackSend(UserConnect *descCon)
 
 int gamePro()
 {
+    static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
 
 }
 
 int mysqlInit(NetInfo *netif)
 {
     netif->conn_ptr = mysql_init(NULL);
-    netif->conn_ptr = mysql_real_connect(netif->conn_ptr, "localhost", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
+    netif->conn_ptr = mysql_real_connect(netif->conn_ptr, "127.0.0.1", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
     if(!netif->conn_ptr)
         return -1;
 }
@@ -343,7 +392,7 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
     else
     {
         res_ptr = mysql_store_result(conn_ptr); //取出结果集
-        if (res_ptr)
+        if (res_ptr && result)
         {
             r  =mysql_num_rows(res_ptr);
             c = mysql_num_fields(res_ptr);
@@ -352,7 +401,9 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
             { //依次取出记录
 
                 for (i = 0; i < c; ++i)
+                {
                     strcpy(result[j][i], sqlrow[i]);
+                }    
                 ++j;
             }
             if (mysql_errno(conn_ptr))
@@ -361,9 +412,26 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
             }
         }
         mysql_free_result(res_ptr);
+        if (row)
+            (*row) = r;
+        if (col)
+            (*col) = c;
     }
 }
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[])
 {
+    char optStr[200] = {0};
+    sprintf(optStr,"select %s from %s ",selectItem,tableName);
+    if(opt)
+    {
+        strcat(optStr, "where ");
+        strcat(optStr,opt);
+    }    
+    strcat(optStr,";");
+    mysqlOpt(conn_ptr, optStr, row, col, result);
+}
 
+int mapInit(int matrix[][MAXCOLNUM+2],int row,int col)
+{
+    
 }

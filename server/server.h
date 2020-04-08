@@ -56,7 +56,8 @@ typedef struct UserConnect{
     int row;
     int col;
     int mapid;
-    int map;
+    int oldmap;
+    int newmap;
     int score;
     int delay;
     int lastTime;
@@ -83,10 +84,14 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect);
 int clientAccept(int serverSocketfd);
 int login(NetInfo *netif, UserConnect *destCon);
 int secPackSend(UserConnect *descCon);
-int dataSend(UserConnect uCon,int sendBufSize,char *sendBuf);
+int dataSend(UserConnect uCon, int bufSize, char *sendBuf);
 int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay);
-int gamePro();
+
 
 int mysqlInit(NetInfo *netif);
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);
+
+int gamePro();
+int gameInit(UserConnect destCon,int matrix[][MAXCOLNUM+2],int row,int col);
+int gamePack(UserConnect destCon);
