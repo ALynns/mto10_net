@@ -93,10 +93,10 @@ int packAnalysis(char *buf, int *packType, void *pack)
         {
             tempStr = strtok(NULL, "\r\n");//获取Row
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            ((CoordinatePack *)pack)->row=atoi(tempStr);
+            ((CoordinatePack *)pack)->row = atoi(tempStr - 'A' + '1');
             tempStr = strtok(NULL, "\r\n");//获取Col
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            ((CoordinatePack *)pack)->col=atoi(tempStr);
+            ((CoordinatePack *)pack)->col = atoi(tempStr) + 1;
             tempStr = strtok(NULL, "\r\n");//长度
             break;
         }
@@ -279,7 +279,7 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
                 clientAccept(netif->localSocketfd);
                 if (!login(netif, userConnect))
                 {
-                    gamePro();
+                    gamePro(netif, userConnect);
 
                 }
 
@@ -306,6 +306,12 @@ int login(NetInfo *netif, UserConnect *destCon)
     ParameterAuthenticatePack p_pack;
     dataRecv(*destCon,500,recvBuf,0);
     packAnalysis(recvBuf,&p_type,&p_pack);
+
+    destCon->row = p_pack.row;
+    destCon->col = p_pack.col;
+    destCon->mapid = p_pack.gameID;
+    destCon->delay = p_pack.delay;
+
     p_pack.MD5[80] = 0;
     
     int i;
@@ -365,7 +371,16 @@ int secPackSend(UserConnect *descCon)
 int gamePro(NetInfo *netif, UserConnect *destCon)
 {
     static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
+    char packBuf[80];
+    CoordinatePack c_pack;
     gameInit(destCon,matrix);
+    matrixPrintf(matrix,destCon->row,destCon->col);
+    gamePack(*destCon);
+    while(1)
+    {
+        dataRecv(u_con, 80, packBuf, u_con.delay);
+        packAnalysis(packBuf, NULL, c_pack);
+    }
 
 }
 
@@ -468,7 +483,7 @@ int gamePack(UserConnect destCon)
             sprintf(temp,"%d",destCon.col);
             packCreate(gamePackbuf, "Col", temp);
 
-            sprintf(temp,"%d",destCon.gameID);
+            sprintf(temp,"%d",destCon.mapid);
             packCreate(gamePackbuf, "GameID", temp);
 
             sprintf(temp,"%d",destCon.delay);
@@ -482,21 +497,56 @@ int gamePack(UserConnect destCon)
         case MERGESUCCEEDED:
         {
             packCreate(gamePackbuf, "Content", "MergeSucceeded");
+
+            sprintf(temp,"%d",destCon.mapid);
+            packCreate(gamePackbuf, "GameID", temp);
+
+            sprintf(temp,"%d",destCon.step);
+            packCreate(gamePackbuf, "Step", temp);
+            
+            sprintf(temp,"%d",destCon.score);
+            packCreate(gamePackbuf, "Score", temp);
+
+            sprintf(temp,"%d",destCon.maxValue);
+            packCreate(gamePackbuf, "MaxValue", temp);
+
+            sprintf(temp,"%s",destCon.oldMap);
+            packCreate(gamePackbuf, "OldMap", temp);
+
+            sprintf(temp,"%s",destCon.newMap);
+            packCreate(gamePackbuf, "NewMap", temp);
             break;
         }
-        case MERGEFAILED:
+        /*case MERGEFAILED:
         {
             packCreate(gamePackbuf, "Content", "MergeFailed");
             break;
-        }
+        }*/
         case GAMEOVER:
         {
             packCreate(gamePackbuf, "Content", "GameOver");
+
+            sprintf(temp,"%d",destCon.mapid);
+            packCreate(gamePackbuf, "GameID", temp);
+
+            sprintf(temp,"%d",destCon.step);
+            packCreate(gamePackbuf, "FinalStep", temp);
+            
+            sprintf(temp,"%d",destCon.score);
+            packCreate(gamePackbuf, "FinalScore", temp);
+
+            sprintf(temp,"%d",destCon.maxValue);
+            packCreate(gamePackbuf, "FinalMaxValue", temp);
+
+            sprintf(temp,"%s",destCon.newMap);
+            packCreate(gamePackbuf, "FinalMap", temp);
             break;
         }
 
     }
     packLength(gamePackbuf);
+    dataSend(u_con, strlen(gamePackbuf), gamePackbuf);
+    return 0;
 }
 
 int mapInit(int matrix[][MAXCOLNUM+2])
@@ -666,5 +716,63 @@ int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map)
             map[col * (r - 1) + c - 1] = matrix[r][c];
         }
     map[row * col] = 0;
+    return 0;
+}
+
+int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
+{
+    int r,c;
+    printf("\n");
+    for(r=1;r<=row;++r)
+    {
+        for(c=1;c<=col;++c)
+        {
+            printf("%d ",matrix[r][c]>0?matrix[r][c]:-1*matrix[r][c]);
+        }
+        printf("\n");
+    }
+}
+
+int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag)
+{
+    if (flag == 0 && matrix[y - 1][x] != num && matrix[y + 1][x] != num && matrix[y][x - 1] != num && matrix[y][x + 1] != num)
+    {
+        return -1;
+    }
+
+    if (matrix[y][x] != num)
+        return 0;
+    else
+    {
+        matrix[y][x] = matrix[y][x] * (-1);
+        matrixRemove(matrix, x - 1, y, num, 1);
+        matrixRemove(matrix, x + 1, y, num, 1);
+        matrixRemove(matrix, x, y - 1, num, 1);
+        matrixRemove(matrix, x, y + 1, num, 1);
+    }
+    
+    return 0;
+}
+
+int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col)
+{
+    int r, c, i;
+    for(r=row;r>=1;--r)
+        for(c=col;c>=1;--c)
+        {
+            i = 1;
+            if(matrix[r][c]==0)
+            {
+                while (!matrix[r - i][c] && i < r)
+                    ;
+                if(i == r)
+                    continue;
+                else
+                {
+                    matrix[r][c]=matrix[r - i][c];
+                    matrix[r - i][c] = 0;
+                }
+            }
+        }
     return 0;
 }

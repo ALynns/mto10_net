@@ -59,8 +59,8 @@ typedef struct UserConnect{
     int row;
     int col;
     int mapid;
-    char *oldMap[(MAXCOLNUM+2)(MAXROWNUM+2)];
-    char *newMap[(MAXCOLNUM+2)(MAXROWNUM+2)];
+    char oldMap[(MAXCOLNUM+2)*(MAXROWNUM+2)];
+    char newMap[(MAXCOLNUM+2)*(MAXROWNUM+2)];
     int score;
     int maxValue;
     int delay;
@@ -96,9 +96,12 @@ int mysqlInit(NetInfo *netif);
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);
 
-int gamePro(UNetInfo *netif, serConnect *destCon);
+int gamePro(NetInfo *netif, UserConnect *destCon);
 int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2]);
 int gamePack(UserConnect destCon);
 int mapInit(int matrix[][MAXCOLNUM+2]);
 int mapFill(int matrix[][MAXCOLNUM+2],int row,int col,int maxNum);
 int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map);
+int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col);
+int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag);
+int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col);
