@@ -103,5 +103,6 @@ int mapInit(int matrix[][MAXCOLNUM+2]);
 int mapFill(int matrix[][MAXCOLNUM+2],int row,int col,int maxNum);
 int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map);
 int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col);
-int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag);
+int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag,int *maxValue);
 int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col);
+int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col);

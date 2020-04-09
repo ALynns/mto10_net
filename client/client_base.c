@@ -23,14 +23,25 @@ int main(int argc,char *argv[])
     {
         return 0;
     }
-    localBind(&netif);
+    int i;
+    for(i=0;i<64;++i)
+    {
+        localBind(&netif);
+        
+        dataRecv(0);
+        login(gmif,netif);
+        
+        gamePro(&gmif,&netif);
 
-    
-    signal(SIGALRM, dataRecv);
-    setTimer(0,1000,0,1000);
-    
-    login(gmif,netif);
-    gamePro(&gmif,&netif);
+        close(netif.socketfd);
+
+        if(gmif.gameMode==BASEMODE)
+            break;
+        
+        recvBufGlobal[0]=0;
+        rdP=0;
+        wtP=0;
+    }
 
     free(netif.serverAddr);
     free(gmif.stuNo);
@@ -218,16 +229,15 @@ int localBind(NetInfo* netif)
 int login(GameInfo gmif,NetInfo netif)
 {
     char buf[300]={0};
-    unsigned char keyString[41];
-    unsigned char sKey[41];
-    unsigned char key[81];
-
-    keyString[0]=0;
-    sKey[0]=0;
-    key[0]=0;
+    unsigned char keyString[41]={0};
+    unsigned char sKey[41]={0};
+    unsigned char key[81]={0};
 
     strcat(keyString,gmif.stuNo);
-    strcat(keyString,"*");
+    if(gmif.gameMode==BASEMODE)
+        strcat(keyString,"*");
+    else
+        strcat(keyString,"-");
     getMD5(&keyString[8],gmif.stuPasswd);
     
 
@@ -236,7 +246,6 @@ int login(GameInfo gmif,NetInfo netif)
     while(readLine(buf))
         ;
     getVar(NULL,sKey,buf);
-
     int i;
     for (i = 0; i < 40; ++i)
     {
@@ -246,7 +255,8 @@ int login(GameInfo gmif,NetInfo netif)
         key[2 * i + 1] = po >= 10 ? po - 10 + 'a' : po + '0';
     }
 
-    buf[0] = 0;
+    for(i=0;i<300;++i)
+        buf[i] = 0;
 
     packCreate(buf,"Type","ParameterAuthenticate");
     packCreate(buf,"MD5",key);
@@ -280,7 +290,6 @@ int login(GameInfo gmif,NetInfo netif)
     packLength(buf);
 
     dataSend(netif.socketfd,strlen(buf),buf);
-    printf("%s",buf);
 
     while(readLine(buf))
     ;
@@ -357,12 +366,11 @@ void dataRecv(int signo)
 	while (1)
 	{
 		ret = recv(netif.socketfd, &(recvBufGlobal[wtP]), GLOBALBUFSIZE, 0);
-		if (ret < 0)
+        if (ret < 0)
 			continue;
 		else
 			break;
 	}
-    //printf("%s\n",&recvBufGlobal[wtP]);
     if (ret >= 0)
         wtP = wtP + ret;
 }
@@ -412,7 +420,7 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
     int lastRow,lastCol;
 
     pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-    printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+    printf("本次选择坐标:Row=%c,Col=%d\n\n\n",lastRow-1+'A',lastCol-1);
 
     char packBuf[200]={0};
     gamePackCreate(lastRow,lastCol-1,packBuf);
@@ -484,7 +492,7 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
             break;
 
         pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-        printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+        printf("本次选择坐标:Row=%c,Col=%d\n\n\n",lastRow-1+'A',lastCol-1);
         gamePackCreate(lastRow,lastCol-1,packBuf);
         dataSend(netif->socketfd,strlen(packBuf),packBuf);
         
@@ -507,52 +515,33 @@ int matrixReload(int matrix[][MAXCOLNUM+2],int row,int col,char *newMatrix)
     }    
 }
 
-int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
-{
-    int r,c;
-    printf("\n");
-    for(r=1;r<=row;++r)
-    {
-        for(c=1;c<=col;++c)
-        {
-            printf("%d ",matrix[r][c]>0?matrix[r][c]:-1*matrix[r][c]);
-        }
-        printf("\n");
-    }
-}
-
 int gameStart(GameInfo *gmif, NetInfo *netif)
 {
     char lineBuf[100];
-    if(rdP<wtP)
-        {
-            readLine(lineBuf);//row
-            char row[3]={0};
-            getVar(NULL,row,lineBuf);
-            gmif->row=atoi(row);
-        }
-        if(rdP<wtP)
-        {
-            readLine(lineBuf);//col
-            char col[3]={0};
-            getVar(NULL,col,lineBuf);
-            gmif->col=atoi(col);
-        }    
-        if(rdP<wtP)
-        {
-            readLine(lineBuf);//gameid
-            char mapid[30]={0};
-            getVar(NULL,mapid,lineBuf);
-            gmif->mapid=atoi(mapid);
-        }    
+    
+    readLine(lineBuf);//row
+    printf("%s\n",lineBuf);
+    char row[3]={0};
+    getVar(NULL,row,lineBuf);
+    gmif->row=atoi(row);
+    
+    readLine(lineBuf);//col
+    printf("%s\n",lineBuf);
+    char col[3]={0};
+    getVar(NULL,col,lineBuf);
+    gmif->col=atoi(col);
 
-        if(rdP<wtP)
-        {
-            readLine(lineBuf);//delay
-            char delay[6]={0};
-            getVar(NULL,delay,lineBuf);
-            netif->delay=atoi(delay);
-        }    
+    readLine(lineBuf);//gameid
+    printf("%s\n",lineBuf);
+    char mapid[30]={0};
+    getVar(NULL,mapid,lineBuf);
+    gmif->mapid=atoi(mapid);
+
+    readLine(lineBuf);//delay
+    printf("%s\n",lineBuf);
+    char delay[6]={0};
+    getVar(NULL,delay,lineBuf);
+    netif->delay=atoi(delay);
 }
 
 int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag,int *lastRow,int *lastCol)
@@ -611,6 +600,19 @@ int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag
     
 }
 
+int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
+{
+    int r,c;
+    for(r=1;r<=row;++r)
+    {
+        for(c=1;c<=col;++c)
+        {
+            printf("%d ",matrix[r][c]>0?matrix[r][c]:-1*matrix[r][c]);
+        }
+        printf("\n");
+    }
+}
+
 int gamePackCreate(int row,int col,char *packBuf)
 {
     packBuf[0]=0;
@@ -625,7 +627,3 @@ int gamePackCreate(int row,int col,char *packBuf)
 
     packLength(packBuf);
 }
-
-
-
-

@@ -93,11 +93,13 @@ int packAnalysis(char *buf, int *packType, void *pack)
         {
             tempStr = strtok(NULL, "\r\n");//获取Row
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            ((CoordinatePack *)pack)->row = atoi(tempStr - 'A' + '1');
+            tempStr[0] = tempStr[0] - 'A' + '1';
+            ((CoordinatePack *)pack)->row = atoi(tempStr);
             tempStr = strtok(NULL, "\r\n");//获取Col
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
             ((CoordinatePack *)pack)->col = atoi(tempStr) + 1;
             tempStr = strtok(NULL, "\r\n");//长度
+            
             break;
         }
     }
@@ -146,7 +148,6 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
     fd_set fdsr;
 
     struct timeval tv;
-    tv.tv_sec = delay/1000;
     while(1)
     {
         FD_ZERO(&fdsr);
@@ -155,7 +156,10 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         if(!delay)
             ret = select(uCon.socketfd + 1, &fdsr, NULL, NULL, NULL);
         else
+        {
+            tv.tv_sec = delay / 1000;
             ret = select(uCon.socketfd + 1, &fdsr, NULL, NULL, &tv);
+        }    
         
         if (ret < 0 )//&& errno != EINTR)
         {
@@ -163,7 +167,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         }
         else
         {
-            if(ret==0)
+            if (ret == 0 && delay != 0)
                 return TIMEOUT;
             if (ret > 0)
                 break;
@@ -179,7 +183,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
     while (1)
     {
         ret = recv(uCon.socketfd, recvBuf, bufSize, 0);
-        printf("%s\n",recvBuf);
+        
         if (ret <= 0)
             continue;
         else
@@ -188,6 +192,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         }
         
     }
+    printf("%s\n",recvBuf);
     return ret;
 }
 
@@ -203,25 +208,17 @@ int dataSend(UserConnect uCon, int bufSize, char *sendBuf)
 
         FD_SET(u_con.socketfd, &fdsr);
 
-        //struct timeval tv;
-        //tv.tv_sec = delay / 1000;
-        ret = select(u_con.socketfd + 1, NULL, &fdsr, NULL, NULL);
+        struct timeval tv;
+        tv.tv_sec = 2;
+        ret = select(u_con.socketfd + 1, NULL, &fdsr, NULL, &tv);
 
-        if (ret < 0 && errno != EINTR)
+        if (ret < 0)
         {
-            printf("select error,%d\n", ret);
-            exit(-1);
+            continue;
         }
         else
         {
-            if (ret > 0)
-                break;
-            if (errno == EINTR)
-            {
-                continue;
-            }
-            else
-                break;
+            break;
         }
     }
     //FD_ISSET(socketfd, &fdsr)判断套接字是否就绪，本题仅监控一个描述符可以略过
@@ -280,9 +277,9 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
                 if (!login(netif, userConnect))
                 {
                     gamePro(netif, userConnect);
-
                 }
 
+                connectClose(u_con);
                 exit(-1);
             //}
         }
@@ -372,15 +369,56 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
 {
     static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
     char packBuf[80];
+    int packType;
     CoordinatePack c_pack;
     gameInit(destCon,matrix);
-    matrixPrintf(matrix,destCon->row,destCon->col);
+    matrixPrintf(matrix, destCon->row, destCon->col);
+    
     gamePack(*destCon);
+    
     while(1)
     {
-        dataRecv(u_con, 80, packBuf, u_con.delay);
-        packAnalysis(packBuf, NULL, c_pack);
+        if(dataRecv(u_con, 80, packBuf, destCon->delay)==TIMEOUT)
+        {
+            printf("Time out\n");
+            exit(-1);
+        }
+
+        packAnalysis(packBuf, &packType, &c_pack);
+
+        destCon->score = destCon->score + matrixRemove(matrix, c_pack.col, c_pack.row, matrix[c_pack.row][c_pack.col], 0, &destCon->maxValue);
+        destCon->step++;
+        matrixPrintf(matrix, destCon->row, destCon->col);
+
+        matrixFall(matrix, destCon->row, destCon->col);
+        matrixPrintf(matrix, destCon->row, destCon->col);
+        mapStr(matrix, destCon->row, destCon->col, destCon->oldMap);
+
+        mapFill(matrix, destCon->row, destCon->col, destCon->maxValue);
+        matrixPrintf(matrix, destCon->row, destCon->col);
+        mapStr(matrix, destCon->row, destCon->col, destCon->newMap);
+
+        if(gameOver(matrix,destCon->row,destCon->col))
+        {
+            destCon->gameStatus = GAMEOVER;
+        }
+
+        gamePack(*destCon);
+        if(destCon->gameStatus==GAMEOVER)
+        {
+            if(destCon->gameMode==BASEMODE)
+            {
+
+            }
+            else
+            {
+                
+            }
+            
+            break;
+        }    
     }
+    
 
 }
 
@@ -391,6 +429,7 @@ int mysqlInit(NetInfo *netif)
     if(!netif->conn_ptr)
         return -1;
 }
+
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[])
 {
     MYSQL_RES *res_ptr;  
@@ -469,7 +508,7 @@ int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2])
 int gamePack(UserConnect destCon)
 {
     char gamePackbuf[500] = {0};
-    char temp[50] = {0};
+    char temp[300] = {0};
     packCreate(gamePackbuf,"Type","GameProgress");
     switch (destCon.gameStatus)
     {
@@ -545,7 +584,7 @@ int gamePack(UserConnect destCon)
 
     }
     packLength(gamePackbuf);
-    dataSend(u_con, strlen(gamePackbuf), gamePackbuf);
+    dataSend(destCon, strlen(gamePackbuf), gamePackbuf);
     return 0;
 }
 
@@ -700,7 +739,7 @@ int mapFill(int matrix[][MAXCOLNUM+2],int row,int col,int maxNum)
                             matrix[r][c] = maxNum - 2;
                             continue;
                         }
-                        matrix[r][c] = t / (80 / (maxNum - 3));
+                        matrix[r][c] = t / (80 / (maxNum - 3) + 1);
                     }
             break;
         }
@@ -713,7 +752,7 @@ int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map)
     for(r=1;r<=row;++r)
         for(c=1;c<=col;++c)
         {
-            map[col * (r - 1) + c - 1] = matrix[r][c];
+            map[col * (r - 1) + c - 1] = matrix[r][c] + '0';
         }
     map[row * col] = 0;
     return 0;
@@ -733,11 +772,17 @@ int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
     }
 }
 
-int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag)
+int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag,int *maxValue)
 {
+    if (flag == 0 && matrix[y][x] == 0)
+    {
+        u_con.gameStatus=MERGEFAILED;
+        return -50;
+    }    
     if (flag == 0 && matrix[y - 1][x] != num && matrix[y + 1][x] != num && matrix[y][x - 1] != num && matrix[y][x + 1] != num)
     {
-        return -1;
+        u_con.gameStatus = MERGEFAILED;
+        return -10;
     }
 
     if (matrix[y][x] != num)
@@ -745,13 +790,27 @@ int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag)
     else
     {
         matrix[y][x] = matrix[y][x] * (-1);
-        matrixRemove(matrix, x - 1, y, num, 1);
-        matrixRemove(matrix, x + 1, y, num, 1);
-        matrixRemove(matrix, x, y - 1, num, 1);
-        matrixRemove(matrix, x, y + 1, num, 1);
+        matrixRemove(matrix, x - 1, y, num, 1,maxValue);
+        matrixRemove(matrix, x + 1, y, num, 1,maxValue);
+        matrixRemove(matrix, x, y - 1, num, 1,maxValue);
+        matrixRemove(matrix, x, y + 1, num, 1,maxValue);
+        if (flag)
+            return 0;
     }
-    
-    return 0;
+    matrix[y][x] = num + 1;
+    if (matrix[y][x] > (*maxValue))
+        (*maxValue) = matrix[y][x];
+    int r, c, removeNum = 1;
+    for (r = 1; r <= u_con.row; ++r)
+        for (c = 1; c <= u_con.col; ++c)
+            if (matrix[r][c] < 0)
+            {
+                removeNum++;
+                matrix[r][c] = 0;
+            }
+
+    u_con.gameStatus = MERGESUCCEEDED;
+    return num * removeNum * 3;
 }
 
 int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col)
@@ -763,8 +822,8 @@ int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col)
             i = 1;
             if(matrix[r][c]==0)
             {
-                while (!matrix[r - i][c] && i < r)
-                    ;
+                while (matrix[r - i][c] == 0 && i < r)
+                    i++;
                 if(i == r)
                     continue;
                 else
@@ -775,4 +834,16 @@ int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col)
             }
         }
     return 0;
+}
+
+int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col)
+{
+    int r,c;
+    for(r=1;r<=row;++r)
+        for(c=1;c<=col;++c)
+        {
+            if (matrix[r][c] == matrix[r + 1][c] || matrix[r][c] == matrix[r][c + 1])
+                return 0;
+        }
+    return 1;
 }

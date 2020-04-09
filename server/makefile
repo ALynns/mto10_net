@@ -8,8 +8,10 @@ mysqlLib = -lmysqlclient -I/usr/include/mysql/ -L/usr/lib/mysql -ldl -lpthread -
 object = server
 
 .PHONY : all clean
-all : clean $(object)
+all : $(object)
 server : server.h server.c
 	g++ -o $(object) $(serverPath)/*.h $(serverPath)/*.c $(mysqlLib)
+db : 
+	g++ -g -rdynamic $(serverPath)/*.c $(serverPath)/*.h $(mysqlLib)
 clean :
-	-rm -rf $(object) 
+	-rm -rf $(object) *.gch core* *.out

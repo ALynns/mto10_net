@@ -420,7 +420,7 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
     int lastRow,lastCol;
 
     pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-    printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+    printf("本次选择坐标:Row=%c,Col=%d\n\n\n",lastRow-1+'A',lastCol-1);
 
     char packBuf[200]={0};
     gamePackCreate(lastRow,lastCol-1,packBuf);
@@ -492,7 +492,7 @@ int gamePro(GameInfo *gmif, NetInfo *netif)
             break;
 
         pointChoose(matrix,*gmif,1,1,0,&lastRow,&lastCol);
-        printf("本次选择坐标:Row=%c,Col=%d\n",lastRow-1+'A',lastCol-1);
+        printf("本次选择坐标:Row=%c,Col=%d\n\n\n",lastRow-1+'A',lastCol-1);
         gamePackCreate(lastRow,lastCol-1,packBuf);
         dataSend(netif->socketfd,strlen(packBuf),packBuf);
         
@@ -603,7 +603,7 @@ int pointChoose(int matrix[][MAXCOLNUM+2],GameInfo gmif,int row,int col,int flag
 int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col)
 {
     int r,c;
-    printf("\n");
+    int i;
     for(r=1;r<=row;++r)
     {
         for(c=1;c<=col;++c)
