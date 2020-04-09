@@ -5,7 +5,7 @@ NetInfo netif;
 
 int main(int argc,char *argv[])
 {
-    //daemon(1,1);
+    daemon(1,1);
 
     getArg(argc,argv,netif.serverAddr,&netif.port);
 
@@ -270,9 +270,9 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
         //FD_ISSET(serverSocketfd, &fdsr)判断套接字是否就绪，本处仅监控一个描述符可以略过
         if (ret > 0)
         {
-            //fork();
-            //if (getpid() == 0)
-            //{
+            fork();
+            if (getpid() == 0)
+            {
                 clientAccept(netif->localSocketfd);
                 if (!login(netif, userConnect))
                 {
@@ -281,7 +281,7 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
 
                 connectClose(u_con);
                 exit(-1);
-            //}
+            }
         }
     }
 
@@ -319,25 +319,26 @@ int login(NetInfo *netif, UserConnect *destCon)
         char tmp = p_pack.MD5[2 * i] * 16 + p_pack.MD5[2 * i + 1];
         keyString[i] = tmp ^ destCon->secString[i];   
     }
-    char opt[50] = {0}, stu_no[8] = {0};
+    char opt[50] = {0};
+     destCon->stu_no[7] = 0;
 
     if(keyString[7]=='*')
     {
         destCon->gameMode=BASEMODE;
-        strncpy(stu_no, keyString, 7);
+        strncpy(destCon->stu_no, keyString, 7);
     }
     else
     {
         destCon->gameMode=COMPMODE;
         for(i=6;i>=0;--i)
         {
-            stu_no[6 - i] = keyString[i];
+            destCon->stu_no[6 - i] = keyString[i];
         }
     }
     
 
     strcat(opt,"stu_no=");
-    strcat(opt,stu_no);
+    strcat(opt,destCon->stu_no);
     
     result[0][0]=(char *)malloc(33);
     result[0][0][0]=0;
@@ -375,12 +376,21 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
     matrixPrintf(matrix, destCon->row, destCon->col);
     
     gamePack(*destCon);
-    
+    gettimeofday(&destCon->tv_begin, NULL);
+
     while(1)
     {
         if(dataRecv(u_con, 80, packBuf, destCon->delay)==TIMEOUT)
         {
-            printf("Time out\n");
+            gettimeofday(&destCon->tv_end, NULL);
+            char opt[200];
+            int ms;
+            float result;
+            ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
+            result = destCon->score / destCon->row * destCon->col;
+
+            sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'TimeOut',%f", destCon->stu_no, destCon->mapid, destCon->row, destCon->col, destCon->score, destCon->step, ms, result);
+            mysqlInsert(netif->conn_ptr, "base", opt);
             exit(-1);
         }
 
@@ -401,6 +411,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
         if(gameOver(matrix,destCon->row,destCon->col))
         {
             destCon->gameStatus = GAMEOVER;
+            gettimeofday(&destCon->tv_end, NULL);
         }
 
         gamePack(*destCon);
@@ -408,11 +419,25 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
         {
             if(destCon->gameMode==BASEMODE)
             {
+                char opt[200];
+                int ms;
+                float result;
+                ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
+                result = (float)(destCon->score) / (float)(destCon->row * destCon->col);
 
+                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,ms,result);
+                mysqlInsert(netif->conn_ptr, "base", opt);
             }
             else
             {
-                
+                char opt[200];
+                int ms;
+                float result;
+                ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
+                result = (float)(destCon->score) / (float)(destCon->row * destCon->col);
+
+                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,ms,result);
+                mysqlInsert(netif->conn_ptr, "comp", opt);
             }
             
             break;
@@ -466,6 +491,11 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
                 fprintf(stderr, "Retrive error:s\n", mysql_error(conn_ptr));
             }
         }
+        else
+        {
+            return -1;
+        }
+        
         mysql_free_result(res_ptr);
         if (row)
             (*row) = r;
@@ -473,6 +503,7 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
             (*col) = c;
     }
 }
+
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[])
 {
     char optStr[200] = {0};
@@ -484,6 +515,13 @@ int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, 
     }    
     strcat(optStr,";");
     mysqlOpt(conn_ptr, optStr, row, col, result);
+}
+
+int mysqlInsert(MYSQL *conn_ptr, const char *tableName, const char *opt)
+{
+    char optStr[200] = {0};
+    sprintf(optStr,"insert into %s values(%s);",tableName,opt);
+    return mysqlOpt(conn_ptr, optStr, NULL, NULL, NULL);
 }
 
 int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2])
@@ -847,3 +885,4 @@ int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col)
         }
     return 1;
 }
+

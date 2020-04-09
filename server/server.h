@@ -52,6 +52,7 @@ typedef struct NetInfo
 typedef struct UserConnect{
     int socketfd;
     int gameMode;
+    char stu_no[8];
     char secString[41];
     int gameStatus;
     int round;
@@ -64,7 +65,8 @@ typedef struct UserConnect{
     int score;
     int maxValue;
     int delay;
-    int lastTime;
+    struct timeval tv_begin;
+    struct timeval tv_end;
 }UserConnect;
 
 typedef struct ParameterAuthenticatePack{
@@ -95,6 +97,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay);
 int mysqlInit(NetInfo *netif);
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);
+int mysqlInsert(MYSQL *conn_ptr, const char *tableName, const char *opt);
 
 int gamePro(NetInfo *netif, UserConnect *destCon);
 int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2]);
