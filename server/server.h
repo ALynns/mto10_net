@@ -109,3 +109,5 @@ int matrixPrintf(int matrix[][MAXCOLNUM+2],int row,int col);
 int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag,int *maxValue);
 int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col);
 int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col);
+
+int logWrite(char *buf, int type, int mode);

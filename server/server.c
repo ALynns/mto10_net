@@ -202,6 +202,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         
     }
     //printf("%s\n",recvBuf);
+    logWrite(recvBuf, 0, 0);
     return ret;
 }
 
@@ -244,6 +245,7 @@ int dataSend(UserConnect uCon, int bufSize, char *sendBuf)
             break;
     }
     //("%s\n",sendBuf);
+    logWrite(sendBuf, 1, 0);
 }
 
 int connectClose(UserConnect destCon)
@@ -910,7 +912,7 @@ int logWrite(char *buf, int type, int mode)
 {
     int fd;
     char tempBuf[1000] = {0}, temp[100] = {0};
-    fd = open("local.log",O_RDWR | O_APPEND);
+    fd = open("local.log", O_RDWR | O_APPEND | O_CREAT);
     if(fd < 0)
 	{   	
 		printf("Open file error\n");
@@ -928,21 +930,23 @@ int logWrite(char *buf, int type, int mode)
         ctime_r(&t, temp);
         strcat(tempBuf, temp);
         
-        sprintf(temp," [%d]",getpid());
+        sprintf(temp,"[%d]",getpid());
         strcat(tempBuf, temp);
 
         switch (type)
         {
             case 0://read
             {
-                strcat(tempBuf,"SocketRead");
+                strcat(tempBuf,"SocketRead\n");
             }
             case 1://write
             {
-                strcat(tempBuf,"SocketWrite");
+                strcat(tempBuf,"SocketWrite\n");
             }
         }
+        write(fd,tempBuf,strlen(buf));
         write(fd, buf, strlen(buf));
+        write(fd,"\n\n\n",3);
     }
     
     flock(fd,LOCK_UN);
