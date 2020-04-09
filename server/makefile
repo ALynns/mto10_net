@@ -2,7 +2,7 @@ curPath=$(shell pwd)
 clientPath = ../client
 serverPath = ../server
 
-mysqlLib = -lmysqlclient -I/usr/include/mysql/ -L/usr/lib/mysql -ldl -lpthread -lmysqlclient
+mysqlLib = `mysql_config --cflags --libs`
 
 
 object = server

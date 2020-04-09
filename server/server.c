@@ -264,18 +264,19 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
     {
         FD_ZERO(&fdsr);
         FD_SET(netif->localSocketfd, &fdsr);
-        ret = select(netif->localSocketfd + 1, &fdsr, NULL, NULL, &tv);
+        ret = select(netif->localSocketfd + 1, &fdsr, NULL, NULL, NULL);
 
         if (ret > 0)
         {
             if (FD_ISSET(netif->localSocketfd, &fdsr) > 0)
             {
+                clientAccept(netif->localSocketfd);
                 int pid;
                 pid = fork();
                 
                 if (pid == 0)
                 {
-                    clientAccept(netif->localSocketfd);
+                    
                     if (!login(netif, userConnect))
                     {
                         gamePro(netif, userConnect);
@@ -283,6 +284,11 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
                     connectClose(u_con);
                     return 0;
                 }
+                else
+                {
+                    close(u_con.socketfd);
+                }
+                
             }
         }
     }
@@ -342,13 +348,25 @@ int login(NetInfo *netif, UserConnect *destCon)
     strcat(opt,"stu_no=");
     strcat(opt,destCon->stu_no);
     
+    result=(char ***)malloc(sizeof(result));
+    result[0]=(char **)malloc(sizeof(result[0]));
     result[0][0]=(char *)malloc(33);
     result[0][0][0]=0;
     mysqlSelect(netif->conn_ptr,"stu_password","student",opt,NULL,NULL,result);
     if(!strcmp(result[0][0],&keyString[8]))
+    {
+        free(result[0][0]);
+        free(result[0]);
+        free(result);
         return 0;
+    }    
     else
+    {
+        free(result[0][0]);
+        free(result[0]);
+        free(result);
         return -1;
+    }    
     
 }
 
