@@ -74,12 +74,21 @@ int packAnalysis(char *buf, int *packType, void *pack)
             tempStr = strtok(NULL, "\r\n");//获取MD5
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
             strcpy(((ParameterAuthenticatePack *)pack)->MD5,tempStr);
+
             tempStr = strtok(NULL, "\r\n");//获取Row
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            ((ParameterAuthenticatePack *)pack)->row=atoi(tempStr);
+            if(atoi(tempStr)==-1)
+                ((ParameterAuthenticatePack *)pack)->row = rand() % 4 + 5;
+            else
+                ((ParameterAuthenticatePack *)pack)->row=atoi(tempStr);
+
             tempStr = strtok(NULL, "\r\n");//获取Col
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            ((ParameterAuthenticatePack *)pack)->col=atoi(tempStr);
+            if(atoi(tempStr)==-1)
+                ((ParameterAuthenticatePack *)pack)->col = rand() % 6 + 5;
+            else
+                ((ParameterAuthenticatePack *)pack)->col=atoi(tempStr);
+
             tempStr = strtok(NULL, "\r\n");//获取GameID
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
             ((ParameterAuthenticatePack *)pack)->gameID=atoi(tempStr);
@@ -192,7 +201,7 @@ int dataRecv(UserConnect uCon, int bufSize, char *recvBuf, int delay)
         }
         
     }
-    printf("%s\n",recvBuf);
+    //printf("%s\n",recvBuf);
     return ret;
 }
 
@@ -234,7 +243,7 @@ int dataSend(UserConnect uCon, int bufSize, char *sendBuf)
         if (sendSize == bufSize)
             break;
     }
-    printf("%s\n",sendBuf);
+    //("%s\n",sendBuf);
 }
 
 int connectClose(UserConnect destCon)
@@ -255,32 +264,25 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
     {
         FD_ZERO(&fdsr);
         FD_SET(netif->localSocketfd, &fdsr);
-        ret = select(netif->localSocketfd + 1, &fdsr, NULL, NULL, NULL);
-        if (ret < 0 && errno != EINTR)
-        {
-            printf("select error\n");
-            exit(-1);
-        }
-        else
-        {
-            if (errno == EINTR && ret < 0)
-                continue;
-        }
+        ret = select(netif->localSocketfd + 1, &fdsr, NULL, NULL, &tv);
 
-        //FD_ISSET(serverSocketfd, &fdsr)判断套接字是否就绪，本处仅监控一个描述符可以略过
         if (ret > 0)
         {
-            fork();
-            if (getpid() == 0)
+            if (FD_ISSET(netif->localSocketfd, &fdsr) > 0)
             {
-                clientAccept(netif->localSocketfd);
-                if (!login(netif, userConnect))
+                int pid;
+                pid = fork();
+                
+                if (pid == 0)
                 {
-                    gamePro(netif, userConnect);
+                    clientAccept(netif->localSocketfd);
+                    if (!login(netif, userConnect))
+                    {
+                        gamePro(netif, userConnect);
+                    }
+                    connectClose(u_con);
+                    return 0;
                 }
-
-                connectClose(u_con);
-                exit(-1);
             }
         }
     }
@@ -373,7 +375,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
     int packType;
     CoordinatePack c_pack;
     gameInit(destCon,matrix);
-    matrixPrintf(matrix, destCon->row, destCon->col);
+    //matrixPrintf(matrix, destCon->row, destCon->col);
     
     gamePack(*destCon);
     gettimeofday(&destCon->tv_begin, NULL);
@@ -398,14 +400,14 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
 
         destCon->score = destCon->score + matrixRemove(matrix, c_pack.col, c_pack.row, matrix[c_pack.row][c_pack.col], 0, &destCon->maxValue);
         destCon->step++;
-        matrixPrintf(matrix, destCon->row, destCon->col);
+        //matrixPrintf(matrix, destCon->row, destCon->col);
 
         matrixFall(matrix, destCon->row, destCon->col);
-        matrixPrintf(matrix, destCon->row, destCon->col);
+        //matrixPrintf(matrix, destCon->row, destCon->col);
         mapStr(matrix, destCon->row, destCon->col, destCon->oldMap);
 
         mapFill(matrix, destCon->row, destCon->col, destCon->maxValue);
-        matrixPrintf(matrix, destCon->row, destCon->col);
+        //matrixPrintf(matrix, destCon->row, destCon->col);
         mapStr(matrix, destCon->row, destCon->col, destCon->newMap);
 
         if(gameOver(matrix,destCon->row,destCon->col))
@@ -886,3 +888,44 @@ int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col)
     return 1;
 }
 
+int logWrite(char *buf, int type, int mode)
+{
+    int fd;
+    char tempBuf[1000] = {0}, temp[100] = {0};
+    fd = open("local.log",O_RDWR | O_APPEND);
+    if(fd < 0)
+	{   	
+		printf("Open file error\n");
+        return -1;
+    }
+    flock(fd, LOCK_EX);
+    if (mode)
+    {
+        write(fd, buf, strlen(buf));
+    }
+    else
+    {
+        time_t t;
+        time(&t);
+        ctime_r(&t, temp);
+        strcat(tempBuf, temp);
+        
+        sprintf(temp," [%d]",getpid());
+        strcat(tempBuf, temp);
+
+        switch (type)
+        {
+            case 0://read
+            {
+                strcat(tempBuf,"SocketRead");
+            }
+            case 1://write
+            {
+                strcat(tempBuf,"SocketWrite");
+            }
+        }
+        write(fd, buf, strlen(buf));
+    }
+    
+    flock(fd,LOCK_UN);
+}
