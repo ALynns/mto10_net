@@ -1,6 +1,6 @@
 -- MySQL dump 10.14  Distrib 5.5.64-MariaDB, for Linux (x86_64)
 --
--- Host: localhost    Database: hw-mto10-u1753935
+-- Host: localhost    Database: hw_mto10_u1753935
 -- ------------------------------------------------------
 -- Server version	5.5.64-MariaDB
 
