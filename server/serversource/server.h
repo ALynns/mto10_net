@@ -1,7 +1,8 @@
+
 #ifndef __CLIENT__H
 #define __CLIENT__H
 
-#include "common.h"
+#include "../commonsource/common.h"
 
 #endif
 
@@ -110,4 +111,4 @@ int matrixRemove(int matrix[][MAXCOLNUM + 2], int x, int y, int num, int flag,in
 int matrixFall(int matrix[][MAXCOLNUM + 2],int row,int col);
 int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col);
 
-int logWrite(char *buf, int type, int mode);
+int logWrite(const char *buf, int type, int mode);

@@ -10,8 +10,6 @@ int main(int argc,char *argv[])
     getArg(argc,argv,netif.serverAddr,&netif.port);
 
     netif.localSocketfd=hostBind(netif.serverAddr,netif.port);
-
-    mysqlInit(&netif);
     
     clientConnect(&netif, &u_con);
 
@@ -21,8 +19,8 @@ int getArg(int argc,char *argv[],char *serverAddr,int *port)
 {
     const char *argvList[ARGVNUM]={"--ipaddr","--port"};
 
-    strcpy(serverAddr,"127.0.0.1");//strcpy(serverAddr,"10.60.102.252");
-    (*port)=21345;
+    strcpy(serverAddr,"192.168.80.230");//strcpy(serverAddr,"10.60.102.252");
+    (*port)=1234;
 
     int i, j;
     for (i = 1; i < argc; ++i)
@@ -53,15 +51,15 @@ int getArg(int argc,char *argv[],char *serverAddr,int *port)
 int packAnalysis(char *buf, int *packType, void *pack)
 {
     char *tempStr;
-    tempStr = strtok(buf, "\r\n");//获取Type行信息
+    tempStr = strtok(buf, "\n");//获取Type行信息
     if(tempStr!=NULL)
     {
-        tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-        if(!strcmp(tempStr,"ParameterAuthenticate"))
+        tempStr = (char *)memchr(tempStr, '=', strlen(tempStr)) + 2;
+        if (!strncmp(tempStr, "ParameterAuthenticate", strlen(tempStr) - 1))
         {
             (*packType)=PARAMETERAUTHENTICATE;
         }
-        if(!strcmp(tempStr,"Coordinate"))
+        if (!strncmp(tempStr, "Coordinate", strlen(tempStr) - 1))
         {
             (*packType)=COORDINATE;
         }
@@ -71,43 +69,50 @@ int packAnalysis(char *buf, int *packType, void *pack)
     {
         case PARAMETERAUTHENTICATE:
         {
-            tempStr = strtok(NULL, "\r\n");//获取MD5
-            tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
-            strcpy(((ParameterAuthenticatePack *)pack)->MD5,tempStr);
+            tempStr = strtok(NULL, "\n"); //获取MD5
+            tempStr = (char *)memchr(tempStr, '=', strlen(tempStr)) + 2;
+            tempStr[strlen(tempStr) - 1] = 0;
+            strcpy(((ParameterAuthenticatePack *)pack)->MD5, tempStr);
 
-            tempStr = strtok(NULL, "\r\n");//获取Row
+
+            tempStr = strtok(NULL, "\n");//获取Row
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
+            tempStr[strlen(tempStr) - 1] = 0;
             if(atoi(tempStr)==-1)
                 ((ParameterAuthenticatePack *)pack)->row = rand() % 4 + 5;
             else
                 ((ParameterAuthenticatePack *)pack)->row=atoi(tempStr);
 
-            tempStr = strtok(NULL, "\r\n");//获取Col
+            tempStr = strtok(NULL, "\n");//获取Col
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
+            tempStr[strlen(tempStr) - 1] = 0;
             if(atoi(tempStr)==-1)
                 ((ParameterAuthenticatePack *)pack)->col = rand() % 6 + 5;
             else
                 ((ParameterAuthenticatePack *)pack)->col=atoi(tempStr);
 
-            tempStr = strtok(NULL, "\r\n");//获取GameID
+            tempStr = strtok(NULL, "\n");//获取GameID
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
+            tempStr[strlen(tempStr) - 1] = 0;
             ((ParameterAuthenticatePack *)pack)->gameID=atoi(tempStr);
-            tempStr = strtok(NULL, "\r\n");//获取delay
+            tempStr = strtok(NULL, "\n");//获取delay
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
+            tempStr[strlen(tempStr) - 1] = 0;
             ((ParameterAuthenticatePack *)pack)->delay=atoi(tempStr);
-            tempStr = strtok(NULL, "\r\n");//长度
+            tempStr = strtok(NULL, "\n");//长度
+            tempStr[strlen(tempStr) - 1] = 0;
             break;
         }
         case COORDINATE :
         {
-            tempStr = strtok(NULL, "\r\n");//获取Row
+            tempStr = strtok(NULL, "\n");//获取Row
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
             tempStr[0] = tempStr[0] - 'A' + '1';
             ((CoordinatePack *)pack)->row = atoi(tempStr);
-            tempStr = strtok(NULL, "\r\n");//获取Col
+            tempStr = strtok(NULL, "\n");//获取Col
             tempStr=(char*)memchr(tempStr, '=', strlen(tempStr))+2;
             ((CoordinatePack *)pack)->col = atoi(tempStr) + 1;
-            tempStr = strtok(NULL, "\r\n");//长度
+            tempStr = strtok(NULL, "\n");//长度
             
             break;
         }
@@ -278,7 +283,7 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
                 
                 if (pid == 0)
                 {
-                    
+                    mysqlInit(netif);
                     if (!login(netif, userConnect))
                     {
                         gamePro(netif, userConnect);
@@ -330,7 +335,7 @@ int login(NetInfo *netif, UserConnect *destCon)
         keyString[i] = tmp ^ destCon->secString[i];   
     }
     char opt[50] = {0};
-     destCon->stu_no[7] = 0;
+    destCon->stu_no[7] = 0;
 
     if(keyString[7]=='*')
     {
@@ -379,7 +384,8 @@ int secPackSend(UserConnect *descCon)
     srand(time(0));
     for (i = 0; i < 40; ++i)
     {
-        descCon->secString[i] = rand() % 94 + 33;
+        char t = rand() % 16;
+        descCon->secString[i] = t >= 10 ? t + 'a' - 10 : t = t + '0';
     }
     descCon->secString[40] = 0;
     packCreate(secPack, "Type", "SecurityString");
@@ -411,7 +417,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
             ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
             result = destCon->score / destCon->row * destCon->col;
 
-            sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'TimeOut',%f", destCon->stu_no, destCon->mapid, destCon->row, destCon->col, destCon->score, destCon->step, ms, result);
+            sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,%d,'TimeOut',%f", destCon->stu_no, destCon->mapid, destCon->row, destCon->col, destCon->score, destCon->step,destCon->maxValue, ms, result);
             mysqlInsert(netif->conn_ptr, "base", opt);
             exit(-1);
         }
@@ -447,8 +453,9 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
                 ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
                 result = (float)(destCon->score) / (float)(destCon->row * destCon->col);
 
-                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,ms,result);
+                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,destCon->maxValue,ms,result);
                 mysqlInsert(netif->conn_ptr, "base", opt);
+                mysql_close(netif->conn_ptr);
             }
             else
             {
@@ -458,8 +465,9 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
                 ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
                 result = (float)(destCon->score) / (float)(destCon->row * destCon->col);
 
-                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,ms,result);
+                sprintf(opt, "now(),%s,%d,%d,%d,%d,%d,%d,%d,'GameOver',%f",destCon->stu_no,destCon->mapid,destCon->row,destCon->col,destCon->score,destCon->step,destCon->maxValue,ms,result);
                 mysqlInsert(netif->conn_ptr, "comp", opt);
+                mysql_close(netif->conn_ptr);
             }
             
             break;
@@ -536,6 +544,7 @@ int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, 
         strcat(optStr,opt);
     }    
     strcat(optStr,";");
+
     mysqlOpt(conn_ptr, optStr, row, col, result);
 }
 
@@ -574,7 +583,7 @@ int gamePack(UserConnect destCon)
     {
         case GAMESTART:
         {
-            packCreate(gamePackbuf, "Content", "GameStart");
+            packCreate(gamePackbuf, "Content", "StartGame");
 
             sprintf(temp,"%d",destCon.row);
             packCreate(gamePackbuf, "Row", temp);
@@ -812,7 +821,7 @@ int mapStr(int matrix[][MAXCOLNUM+2],int row,int col,char *map)
     for(r=1;r<=row;++r)
         for(c=1;c<=col;++c)
         {
-            map[col * (r - 1) + c - 1] = matrix[r][c] + '0';
+            map[col * (r - 1) + c - 1] = matrix[r][c] >= 10 ? matrix[r][c] - 10 + 'A' : matrix[r][c] + '0';
         }
     map[row * col] = 0;
     return 0;
@@ -908,7 +917,7 @@ int gameOver(int matrix[][MAXCOLNUM + 2],int row,int col)
     return 1;
 }
 
-int logWrite(char *buf, int type, int mode)
+int logWrite(const char *buf, int type, int mode)
 {
     int fd;
     char tempBuf[1000] = {0}, temp[100] = {0};
@@ -938,10 +947,12 @@ int logWrite(char *buf, int type, int mode)
             case 0://read
             {
                 strcat(tempBuf,"SocketRead\n");
+                break;
             }
             case 1://write
             {
                 strcat(tempBuf,"SocketWrite\n");
+                break;
             }
         }
         write(fd,tempBuf,strlen(buf));
