@@ -314,7 +314,7 @@ int clientAccept(int serverSocketfd)
 
 int login(NetInfo *netif, UserConnect *destCon)
 {
-    char recvBuf[300] = {0}, keyString[41] = {0}, ***result;
+    char recvBuf[1000] = {0}, keyString[41] = {0}, ***result;
     int p_type;
     ParameterAuthenticatePack p_pack;
     dataRecv(*destCon,500,recvBuf,0);
@@ -335,7 +335,7 @@ int login(NetInfo *netif, UserConnect *destCon)
         char tmp = p_pack.MD5[2 * i] * 16 + p_pack.MD5[2 * i + 1];
         keyString[i] = tmp ^ destCon->secString[i];   
     }
-    char opt[50] = {0};
+    char opt[200] = {0};
     destCon->stu_no[7] = 0;
 
     if(keyString[7]=='*')
@@ -398,7 +398,7 @@ int secPackSend(UserConnect *descCon)
 int gamePro(NetInfo *netif, UserConnect *destCon)
 {
     static int matrix[MAXROWNUM + 2][MAXCOLNUM + 2] = {0};
-    char packBuf[80];
+    char packBuf[1000];
     int packType;
     CoordinatePack c_pack;
     gameInit(destCon,matrix);
@@ -412,7 +412,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
         if(dataRecv(u_con, 80, packBuf, destCon->delay)==TIMEOUT)
         {
             gettimeofday(&destCon->tv_end, NULL);
-            char opt[200];
+            char opt[1000];
             int ms;
             float result;
             ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
@@ -448,7 +448,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
         {
             if(destCon->gameMode==BASEMODE)
             {
-                char opt[200];
+                char opt[1000];
                 int ms;
                 float result;
                 ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
@@ -460,7 +460,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
             }
             else
             {
-                char opt[200];
+                char opt[1000];
                 int ms;
                 float result;
                 ms = (destCon->tv_end.tv_sec - destCon->tv_begin.tv_sec) * 1000 + (destCon->tv_end.tv_usec - destCon->tv_begin.tv_usec) / 1000;
@@ -481,7 +481,7 @@ int gamePro(NetInfo *netif, UserConnect *destCon)
 int mysqlInit(NetInfo *netif)
 {
     netif->conn_ptr = mysql_init(NULL);
-    netif->conn_ptr = mysql_real_connect(netif->conn_ptr, "127.0.0.1", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
+    netif->conn_ptr = mysql_real_connect(netif->conn_ptr, "127.0.0.1", "u1753935", "u1753935", "hw_mto10_u1753935", 0, NULL, 0);
     if(!netif->conn_ptr)
         return -1;
 }
@@ -577,8 +577,8 @@ int gameInit(UserConnect *destCon,int matrix[][MAXCOLNUM+2])
 
 int gamePack(UserConnect destCon)
 {
-    char gamePackbuf[500] = {0};
-    char temp[300] = {0};
+    char gamePackbuf[1000] = {0};
+    char temp[1000] = {0};
     packCreate(gamePackbuf,"Type","GameProgress");
     switch (destCon.gameStatus)
     {

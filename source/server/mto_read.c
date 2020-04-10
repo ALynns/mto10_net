@@ -144,7 +144,7 @@ int mto_readSelect(MYSQL *conn_ptr, args *arg)
 int mysqlInit(MYSQL **conn_ptr)
 {
     (*conn_ptr) = mysql_init(NULL);
-    (*conn_ptr) = mysql_real_connect((*conn_ptr), "127.0.0.1", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
+    (*conn_ptr) = mysql_real_connect((*conn_ptr), "127.0.0.1", "u1753935", "u1753935", "hw_mto10_u1753935", 0, NULL, 0);
     if(!(*conn_ptr))
         return -1;
 }

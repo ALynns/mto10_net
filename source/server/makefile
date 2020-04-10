@@ -23,4 +23,4 @@ gdbr :
 	g++ -g -rdynamic $(serverPath)/mto_read.c $(mysqlLib)
 
 clean :
-	-rm -rf $(object) *.o *.gch core* *.out  
+	-rm -rf $(object) *.o *.gch core* *.out *.log
