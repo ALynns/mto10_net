@@ -1,18 +1,25 @@
 curPath=$(shell pwd)
-commonPath = $(curPath)/commonsource
-serverPath = $(curPath)/serversource
 
 mysqlLib = `mysql_config --cflags --libs`
 
-serverFile = $(commonPath)/* $(serverPath)/server.c $(serverPath)/server.h
+serverFile = common.* server.* md5.*
+mto_readFile = mto_read.c
 
-object = server
+object = server mto_read
 
 .PHONY : all clean
 all : $(object)
+
 server : 
 	g++ -o server $(serverFile) $(mysqlLib)
-db : 
+
+mto_read :
+	g++ -o mto_read $(mto_readFile) $(mysqlLib)
+
+gdbs : 
 	g++ -g -rdynamic $(serverFile) $(mysqlLib)
+
+gdbr :
+	g++ -g -rdynamic $(serverPath)/mto_read.c $(mysqlLib)
 clean :
-	-rm -rf $(object) $(commonPath)/*.o $(commonPath)/*.gch $(commonPath)/core* $(commonPath)/*.out  $(serverPath)/*.o $(serverPath)/*.gch $(serverPath)/*.out $(serverPath)/core* 
+	-rm -rf $(object) *.o *.gch core* *.out  

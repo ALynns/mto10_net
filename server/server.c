@@ -269,6 +269,7 @@ int clientConnect(NetInfo *netif, UserConnect *userConnect)
 
     while(1)
     {
+        waitpid(0, NULL, WNOHANG);
         FD_ZERO(&fdsr);
         FD_SET(netif->localSocketfd, &fdsr);
         ret = select(netif->localSocketfd + 1, &fdsr, NULL, NULL, NULL);

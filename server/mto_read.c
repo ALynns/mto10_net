@@ -1,18 +1,21 @@
-#include "../commonsource/common.h"
+#include "common.h"
+#include <pwd.h>
 
 typedef struct args
 {
+    int stuno;
     int limit;
     int mapid;
     int row;
     int col;
 }args;
 
-#define ARGVNUM 5
+#define ARGVNUM 6
 #define COLUMN 12
 
-int getArg(int argc,char *argv[],char *serverAddr,int *port);
-int mysqlInit(MYSQL *conn_ptr);
+int getArg(int argc,char *argv[],args* arg);
+int mto_readSelect(MYSQL *conn_ptr, args *arg);
+int mysqlInit(MYSQL **conn_ptr);
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[]);
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[]);
 
@@ -22,15 +25,23 @@ int main(int argc,char *argv[])
     MYSQL *conn_ptr;
     int r, c;
     getArg(argc,argv,&arg);
-    mysqlInit(conn_ptr);
+    if(mysqlInit(&conn_ptr)==-1)
+        return 0;
+    mto_readSelect(conn_ptr, &arg);
+    mysql_close(conn_ptr);
+    return 0;
 }
 
 int getArg(int argc,char *argv[],args *arg)
 {
-    const char *argvList[ARGVNUM] = {"--stest","--limit", "--mapid", "--row", "--col"};
+    const char *argvList[ARGVNUM] = {"--stest", "--limit", "--mapid", "--row", "--col", "--user"};
 
     int i, j;
 
+    struct passwd *pwd = getpwuid(getuid());
+    //arg->stuno = atoi(&pwd->pw_name[1]);
+    //printf("%d\n", arg->stuno);
+    arg->stuno = 1753935;
     arg->limit = 10;
     arg->mapid = -1;
     arg->row = -1;
@@ -67,6 +78,13 @@ int getArg(int argc,char *argv[],args *arg)
                         arg->col = atoi(argv[i + 1]);
                         break;
                     }
+                    case 5:
+                    {
+                        struct passwd *pwd = getpwuid(getuid());
+                        arg->stuno = atoi(pwd->pw_name);
+                        printf("%d\n", arg->stuno);
+                        break;
+                    }
 
                     default:
                         break;
@@ -78,8 +96,9 @@ int getArg(int argc,char *argv[],args *arg)
 
 int mto_readSelect(MYSQL *conn_ptr, args *arg)
 {
-    char item[200]={0},opt[200]={0};
+    char item[1000]={0},opt[1000]={0};
     char ***result;
+    int r = 0, c = 0;
     result = (char ***)malloc(sizeof(*result) * arg->limit);
     int i;
     for(i=0;i<arg->limit;++i)
@@ -87,24 +106,52 @@ int mto_readSelect(MYSQL *conn_ptr, args *arg)
         result[i]=(char **)malloc(sizeof(result) * COLUMN);
         int j;
         for(j=0;j<COLUMN;++j)
-            result[i][j]=(char *)malloc(100);
+        {
+            result[i][j]=(char *)malloc(1000);
+            memset(result[i][j], 0, 100);
+        }    
     }
-    sprintf(item,"base.time as 游戏时间,base.stu_no as 学号,student.stu_name as 姓名,base.mapid as MAPID,base.row as 行,base.col as 列,base.score as 分数,base.step as 步数,base.max as 合成值,base.msec as 时长,base.end as 结果,base.result as 得分");
-    sprintf(opt, "student.stu_no=base.stuno limit 0,%d ", arg->limit);
-    mysqlSelect(conn_ptr,item,"student,base",opt,)
+    sprintf(item,"base.time as '游戏时间',base.stu_no as '学号',student.stu_name as '姓名',base.mapid as MAPID,base.row as '行',base.col as '列',base.score as '分数',base.step as '步数',base.max as '合成值',base.msec as '时长',base.end as '结果',base.result as '得分'");
+    
+    if(arg->stuno>0)
+        sprintf(opt, "student.stu_no=base.stu_no and base.stu_no=%d ",arg->stuno);
+
+    if(arg->mapid>0)
+        sprintf(&opt[strlen(opt)], "and base.stu_no=%d ", arg->mapid);
+
+    if(arg->row>0)
+        sprintf(&opt[strlen(opt)], "and base.row=%d ", arg->row);
+
+    if(arg->col>0)
+        sprintf(&opt[strlen(opt)], "and base.col=%d ", arg->col);
+
+    if(arg->limit>0)
+        sprintf(&opt[strlen(opt)], "limit 0,%d ", arg->limit);
+
+    //mysqlSelect(conn_ptr, "*", "student", NULL, NULL, NULL, result);
+    if (mysqlSelect(conn_ptr, item, "student,base", opt, &r, &c, result) == -1)
+        ;
+    printf("游戏时间\t\t学号\t姓名\tMAPID\t\t行\t列\t分数\t步数\t最大值\t时长\t结果\t\t得分\n");
+    for(i=0;i<r;++i)
+    {
+        int j;
+        for(j=0;j<c;++j)
+            printf("%s\t", result[i][j]);
+        printf("\n");
+    }
 }
 
-int mysqlInit(MYSQL *conn_ptr)
+int mysqlInit(MYSQL **conn_ptr)
 {
-    MYSQL *conn_ptr = mysql_init(NULL);
-    MYSQL *conn_ptr = mysql_real_connect(MYSQL *conn_ptr, "127.0.0.1", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
-    if(!netif->conn_ptr)
+    (*conn_ptr) = mysql_init(NULL);
+    (*conn_ptr) = mysql_real_connect((*conn_ptr), "127.0.0.1", "u1753935", "u1753935", "hw-mto10-u1753935", 0, NULL, 0);
+    if(!(*conn_ptr))
         return -1;
 }
 
 int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, const char *opt, int *row, int *col, char **result[])
 {
-    char optStr[200] = {0};
+    char optStr[1000] = {0};
     sprintf(optStr,"select %s from %s ",selectItem,tableName);
     if(opt)
     {
@@ -112,7 +159,9 @@ int mysqlSelect(MYSQL *conn_ptr, const char *selectItem, const char *tableName, 
         strcat(optStr,opt);
     }    
     strcat(optStr,";");
-    mysqlOpt(conn_ptr, optStr, row, col, result);
+    
+    if(mysqlOpt(conn_ptr, optStr, row, col, result)==-1)
+        return -1;
 }
 
 int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **result[])
@@ -126,7 +175,7 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
 
     if (res)
     {
-        //printf("SELECT error:%s\n",mysql_error(conn_ptr));查询错误
+        printf("SELECT error:%s\n",mysql_error(conn_ptr));
         return -1;
     }
     else
@@ -145,10 +194,6 @@ int mysqlOpt(MYSQL *conn_ptr, const char *optStr, int *row, int *col, char **res
                     strcpy(result[j][i], sqlrow[i]);
                 }    
                 ++j;
-            }
-            if (mysql_errno(conn_ptr))
-            {
-                fprintf(stderr, "Retrive error:s\n", mysql_error(conn_ptr));
             }
         }
         else

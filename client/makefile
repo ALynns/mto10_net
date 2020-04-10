@@ -2,16 +2,14 @@ curPath=$(shell pwd)
 clientPath = ../client
 serverPath = ../server
 
-object =  client_base client_comp
-others =  client_base client_comp
+object =  mto10_client
 
 head = md5.h common.h client.h
 
 .PHONY : all clean
 all : $(object)
 
-client_base : $(head) md5.c common.c client_base.c
-client_comp : $(head) md5.c common.c client_comp.c
+mto10_client : $(head) md5.c common.c mto10_client.c
 
 clean :
-	-rm -rf $(object) $(others)
+	-rm -rf $(object) *.o

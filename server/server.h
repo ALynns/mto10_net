@@ -2,7 +2,7 @@
 #ifndef __CLIENT__H
 #define __CLIENT__H
 
-#include "../commonsource/common.h"
+#include "common.h"
 
 #endif
 

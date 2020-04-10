@@ -1,13 +1,16 @@
 curPath=$(shell pwd)
-clientPath = ./client
-serverPath = ./server
-commonPath = ./common
-
-object = test
-others = test 
 
 .PHONY : all clean
 
-all : $(object)
+all :
+	@for n in $(curPath)/**/;\
+		do \
+			$(MAKE) -C $$n ; \
+		done
 
-test : $(commonPath)/* $(clientPath)/* 
+
+clean :
+	@for n in $(curPath)/**/;\
+		do \
+			$(MAKE) -C $$n clean; \
+		done
